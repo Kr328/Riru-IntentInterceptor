@@ -18,6 +18,7 @@ android {
 
     defaultConfig {
         applicationId("com.github.kr328.intent")
+
         minSdkVersion(moduleMinSdkVersion)
         targetSdkVersion(moduleTargetSdkVersion)
 
