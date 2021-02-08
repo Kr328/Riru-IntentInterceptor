@@ -8,8 +8,8 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:7.0.0-alpha04")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.21")
+        classpath("com.android.tools.build:gradle:4.1.2")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.30")
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
@@ -28,8 +28,6 @@ allprojects {
     val moduleMinSdkVersion: Int by extra(26)
     val moduleTargetSdkVersion: Int by extra(30)
 
-    val kotlinVersion: String by extra("1.4.21")
-    val composeVersion: String by extra("1.0.0-alpha10")
     val ktxVersion: String by extra("1.3.2")
     val appcompatVersion: String by extra("1.2.0")
 }

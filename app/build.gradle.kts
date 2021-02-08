@@ -8,8 +8,6 @@ val moduleVersionName: String by extra
 val moduleMinSdkVersion: Int by extra
 val moduleTargetSdkVersion: Int by extra
 
-val kotlinVersion: String by extra
-val composeVersion: String by extra
 val ktxVersion: String by extra
 val appcompatVersion: String by extra
 
@@ -42,21 +40,10 @@ android {
         jvmTarget = "1.8"
         useIR = true
     }
-
-    buildFeatures {
-        compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = composeVersion
-        kotlinCompilerVersion = kotlinVersion
-    }
 }
 
 dependencies {
+    implementation(kotlin("stdlib-jdk8"))
     implementation("androidx.core:core-ktx:$ktxVersion")
     implementation("androidx.appcompat:appcompat:$appcompatVersion")
-    implementation("androidx.compose.ui:ui:$composeVersion")
-    implementation("androidx.compose.material:material:$composeVersion")
-    implementation("androidx.compose.ui:ui-tooling:$composeVersion")
 }

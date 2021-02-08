@@ -3,37 +3,26 @@ package com.github.kr328.intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.PersistableBundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.runtime.Composable
-import com.github.kr328.intent.compat.*
+import com.github.kr328.intent.compat.isLightNavigationBarCompat
+import com.github.kr328.intent.compat.isLightStatusBarsCompat
+import com.github.kr328.intent.compat.resolveThemedBoolean
+import com.github.kr328.intent.compat.resolveThemedColor
 
 abstract class BaseActivity: AppCompatActivity() {
-    private var contentView: ContentView? = null
-
-    @Composable
-    abstract fun Content()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        window.isSystemBarsTranslucentCompat = true
+    override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
+        super.onCreate(savedInstanceState, persistentState)
 
         applyDayNight()
-
-        contentView = ContentView(this)
-
-        contentView?.setContent {
-            Content()
-        }
-
-        setContentView(contentView)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
 
-        applyDayNight(newConfig)
+        recreate()
     }
+
     private fun applyDayNight(config: Configuration = resources.configuration) {
         if ((config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES) {
             theme.applyStyle(R.style.AppThemeComposeDark, true)
@@ -51,7 +40,5 @@ abstract class BaseActivity: AppCompatActivity() {
             window.isLightNavigationBarCompat =
                 resolveThemedBoolean(android.R.attr.windowLightNavigationBar)
         }
-
-        contentView?.setConfiguration(configuration = config)
     }
 }
