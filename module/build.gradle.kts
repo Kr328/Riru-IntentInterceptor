@@ -1,4 +1,3 @@
-import com.android.build.gradle.tasks.generatePrefabPackages
 import org.gradle.kotlin.dsl.support.zipTo
 import java.net.URI
 import java.security.MessageDigest
@@ -8,7 +7,7 @@ plugins {
 }
 
 val riruId = "intent_interceptor"
-val riruApi = 10
+val riruApi = 9
 val riruName = "v22.0"
 
 val moduleId = "riru_intent_interceptor"
