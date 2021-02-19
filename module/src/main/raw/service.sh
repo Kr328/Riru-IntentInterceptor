@@ -15,4 +15,4 @@ done
 
 touch "$MODDIR/apk_installed"
 
-/system/bin/am start -n com.github.kr328.clipboard/.InstalledActivity
+/system/bin/am start -n com.github.kr328.intent/.InstalledActivity

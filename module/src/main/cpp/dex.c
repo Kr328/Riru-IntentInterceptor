@@ -26,9 +26,12 @@ void read_dex_data() {
     assert_syscall(fstat(fd, &s) < 0, "stat dex");
 
     dex_data = malloc(s.st_size);
-    dex_size = s.st_size;
 
     assert_syscall(read_full(fd, dex_data, s.st_size) < 0, "read dex file");
+
+    dex_size = s.st_size;
+
+    LOGI("zygote: dex " INJECT_DEX_PATH);
 }
 
 void free_dex_data() {
@@ -49,6 +52,9 @@ static int catch_exception(JNIEnv *env) {
 }
 
 void load_and_invoke_dex(JNIEnv *env, const char *args) {
+    if (dex_size == 0)
+        return;
+
     // get system class loader
     jclass cClassLoader = (*env)->FindClass(env, "java/lang/ClassLoader");
     jmethodID mSystemClassLoader = (*env)->GetStaticMethodID(env, cClassLoader,

@@ -21,7 +21,7 @@
 #define EXPORT __attribute__((visibility("default"))) __attribute__((used))
 #define UNUSED(var) ((void) var)
 
-static char saved_package_name[PATH_MAX];
+static int inject_next_app = 0;
 
 static void onModuleLoaded() {
     read_dex_data();
@@ -41,35 +41,39 @@ static void nativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
     }
 }
 
-static void appProcessPre(JNIEnv *env, jstring *jAppDataDir) {
-    memset(saved_package_name, 0, PATH_MAX);
+static void appProcessPre(JNIEnv *env, jstring jAppDataDir) {
+    inject_next_app = 0;
 
-    if (*jAppDataDir) {
+    if (jAppDataDir) {
+        char package_name[PATH_MAX] = {0};
         const char *appDataDir = (*env)->GetStringUTFChars(env, jAppDataDir, NULL);
 
         // /data/user/<user_id>/<package>
-        if (sscanf(appDataDir, "/data/%*[^/]/%*[^/]/%s", saved_package_name) == 1)
+        if (sscanf(appDataDir, "/data/%*[^/]/%*[^/]/%s", package_name) == 1)
             goto found;
 
         // /mnt/expand/<id>/user/<user_id>/<package>
-        if (sscanf(appDataDir, "/mnt/expand/%*[^/]/%*[^/]/%*[^/]/%s", saved_package_name) == 1)
+        if (sscanf(appDataDir, "/mnt/expand/%*[^/]/%*[^/]/%*[^/]/%s", package_name) == 1)
             goto found;
 
         // /data/data/<package>
-        if (sscanf(appDataDir, "/data/%*[^/]/%s", saved_package_name) == 1)
+        if (sscanf(appDataDir, "/data/%*[^/]/%s", package_name) == 1)
             goto found;
 
         // nothing found
-        saved_package_name[0] = '\0';
+        package_name[0] = 0;
 
-        found:;
+        found:
+
+        if (package_name[0] != 0)
+            inject_next_app = should_inject_package(package_name);
+
+        (*env)->ReleaseStringUTFChars(env, jAppDataDir, appDataDir);
     }
 }
 
-static void appProcessPost(JNIEnv *env, const char *from, const char *package_name, jint uid) {
-    LOGD("%s: uid=%d, package=%s", from, uid, package_name);
-
-    if (should_inject_package(package_name)) {
+static void appProcessPost(JNIEnv *env) {
+    if (inject_next_app) {
         load_and_invoke_dex(env, "app");
     } else {
         free_dex_data();
@@ -84,12 +88,12 @@ static void nativeForkAndSpecializePre(
         jobjectArray *pkgDataInfoList,
         jobjectArray *whitelistedDataInfoList, jboolean *bindMountAppDataDirs,
         jboolean *bindMountAppStorageDirs) {
-    appProcessPre(env, appDataDir);
+    appProcessPre(env, *appDataDir);
 }
 
 static void nativeForkAndSpecializePost(JNIEnv *env, jclass clazz, jint res) {
     if (res == 0) {
-        appProcessPost(env, "forkAndSpecialize", saved_package_name, getuid());
+        appProcessPost(env);
     }
 }
 
@@ -99,17 +103,17 @@ static void nativeSpecializeAppProcessPre(
         jboolean *startChildZygote, jstring *instructionSet, jstring *appDataDir,
         jboolean *isTopApp, jobjectArray *pkgDataInfoList, jobjectArray *whitelistedDataInfoList,
         jboolean *bindMountAppDataDirs, jboolean *bindMountAppStorageDirs) {
-    appProcessPre(env, appDataDir);
+    appProcessPre(env, *appDataDir);
 }
 
 static void nativeSpecializeAppProcessPost(
         JNIEnv *env, jclass clazz) {
-    appProcessPost(env, "specializeAppProcess", saved_package_name, getuid());
+    appProcessPost(env);
 }
 
 EXPORT
 void *init(void *arg) {
-    static RiruModuleInfoV9 *module;
+    static void *_module = NULL;
     static int riru_api_version = -1;
     static int phase = 0;
 
@@ -125,7 +129,7 @@ void *init(void *arg) {
         case 2: {
             switch (riru_api_version) {
                 case 9: {
-                    module = malloc(sizeof(RiruModuleInfoV9));
+                    RiruModuleInfoV9 *module = malloc(sizeof(RiruModuleInfoV9));
                     memset(module, 0, sizeof(*module));
 
                     module->supportHide = 1;
@@ -140,11 +144,13 @@ void *init(void *arg) {
                     module->forkAndSpecializePost = &nativeForkAndSpecializePost;
                     module->specializeAppProcessPre = &nativeSpecializeAppProcessPre;
                     module->specializeAppProcessPost = &nativeSpecializeAppProcessPost;
+
+                    _module = module;
 
                     return module;
                 }
                 case 10: {
-                    module = malloc(sizeof(RiruModuleInfoV10));
+                    RiruModuleInfoV10 *module = malloc(sizeof(RiruModuleInfoV10));
                     memset(module, 0, sizeof(*module));
 
                     module->supportHide = 1;
@@ -159,6 +165,8 @@ void *init(void *arg) {
                     module->forkAndSpecializePost = &nativeForkAndSpecializePost;
                     module->specializeAppProcessPre = &nativeSpecializeAppProcessPre;
                     module->specializeAppProcessPost = &nativeSpecializeAppProcessPost;
+
+                    _module = module;
 
                     return module;
                 }
@@ -175,7 +183,7 @@ void *init(void *arg) {
             return NULL;
         }
         case 3: {
-            free(module);
+            free(_module);
 
             return NULL;
         }

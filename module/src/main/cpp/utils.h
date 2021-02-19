@@ -1,7 +1,5 @@
 #pragma once
 
-#include <jni.h>
-
 #define scope_fd __attribute__((cleanup(cleanup_fd)))
 
 // resource manage

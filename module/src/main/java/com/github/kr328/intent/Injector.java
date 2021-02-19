@@ -1,31 +1,23 @@
 package com.github.kr328.intent;
 
-import android.content.Context;
-import android.content.IClipboard;
-import android.os.IBinder;
-import android.os.Process;
 import android.util.Log;
 
-import static com.github.kr328.intent.shared.Constants.TAG;
+import com.github.kr328.intent.shared.Constants;
 
 @SuppressWarnings({"unused", "RedundantSuppression"})
-public class Injector extends ServiceProxy {
-    public static void inject(String packageName) {
-        Log.i(TAG, String.format("Uid = %d Pid = %d", Process.myUid(), Process.myPid()));
-
-        Injector injector = new Injector();
-
+public class Injector {
+    public static void inject(String process) {
         try {
-            injector.install();
-
-            Log.i(TAG, "Inject successfully");
+            switch (process) {
+                case "system_server":
+                    new SystemInjector().inject();
+                    break;
+                case "app":
+                    new AppInjector().inject();
+                    break;
+            }
         } catch (Exception e) {
-            Log.e(TAG, "Inject failure", e);
+            Log.e(Constants.TAG, "inject " + process + ": " + e, e);
         }
-    }
-
-    @Override
-    protected IBinder onAddService(String name, IBinder service) {
-        return service;
     }
 }

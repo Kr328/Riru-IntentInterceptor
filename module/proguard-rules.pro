@@ -23,5 +23,5 @@
 -dontobfuscate
 
 -keep class com.github.kr328.intent.Injector {
-    public void inject(java.lang.String);
+    *;
 }

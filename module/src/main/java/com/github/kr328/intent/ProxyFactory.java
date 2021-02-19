@@ -35,7 +35,7 @@ public class ProxyFactory {
             throw new NoSuchFieldException("invalid stub");
 
         for (Method method : replaced.getClass().getMethods()) {
-            TransactHook hook = method.getAnnotation(TransactHook.class);
+            Hook hook = method.getAnnotation(Hook.class);
 
             if (hook == null)
                 continue;
@@ -45,7 +45,7 @@ public class ProxyFactory {
                 final int count = codes.size();
 
                 if (code.length > 0) {
-                    for ( int c : code ) {
+                    for (int c : code) {
                         codes.add(c);
                     }
                 } else {
@@ -92,7 +92,7 @@ public class ProxyFactory {
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
-    public @interface TransactHook {
+    public @interface Hook {
         int[] value() default {};
     }
 
