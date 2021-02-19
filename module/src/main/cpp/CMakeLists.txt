@@ -33,6 +33,6 @@ add_definitions(
         "-DRIRU_MODULE_VERSION_CODE=${RIRU_MODULE_VERSION_CODE}"
 )
 
-add_library(riru_${RIRU_MODULE_ID} SHARED main.c)
+add_library(riru_${RIRU_MODULE_ID} SHARED main.c config.c utils.c dex.c)
 target_link_libraries(riru_${RIRU_MODULE_ID} log riru::riru)
 set_target_properties(riru_${RIRU_MODULE_ID} PROPERTIES LINK_FLAGS_RELEASE -s)

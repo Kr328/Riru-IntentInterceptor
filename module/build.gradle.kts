@@ -15,7 +15,7 @@ val moduleName = "Riru - Intent Interceptor"
 val moduleDescription = "A module of Riru. Allow modules modify activity intents."
 val moduleAuthor = "Kr328"
 val moduleFiles = listOf(
-        "system/framework/$riruId.dex",
+        "system/framework/boot-intent-interceptor.dex",
         "system/app/IntentInterceptor/IntentInterceptor.apk"
 )
 
@@ -166,13 +166,13 @@ android {
                 from(apkTree) {
                     include("classes.dex")
                     eachFile {
-                        path = "system/framework/$riruId.dex"
+                        path = "system/framework/boot-intent-interceptor.dex"
                     }
                 }
 
                 from(project(":app").buildDir.resolve("outputs/apk/$variant/app-$variant.apk")) {
-                    into("system/app/ClipboardWhitelist")
-                    rename { "ClipboardWhitelist.apk" }
+                    into("system/app/IntentInterceptor")
+                    rename { "IntentInterceptor.apk" }
                 }
             }
 

@@ -11,91 +11,20 @@
 #include <sys/system_properties.h>
 
 #include "riru.h"
+#include "log.h"
+#include "utils.h"
+#include "dex.h"
+#include "config.h"
 
-#define TAG "IntentInterceptor"
-
-#define TARGET_RIRU_API 9
-
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+#define TARGET_RIRU_API 10
 
 #define EXPORT __attribute__((visibility("default"))) __attribute__((used))
 #define UNUSED(var) ((void) var)
 
-#define INJECT_DEX_PATH "/system/framework/" RIRU_MODULE_ID ".dex"
-#define INJECT_CLASS_NAME "com.github.kr328.intent.Injector"
-#define INJECT_METHOD_NAME "inject"
-#define INJECT_METHOD_SIGNATURE "(Ljava/lang/String;)V"
+static char saved_package_name[PATH_MAX];
 
-static void *dex;
-static size_t dex_size;
-
-static int catch_exception(JNIEnv *env) {
-    int result = (*env)->ExceptionCheck(env);
-
-    // check status
-    if (result) {
-        (*env)->ExceptionDescribe(env);
-        (*env)->ExceptionClear(env);
-    }
-
-    return result;
-}
-
-static int load_and_invoke_dex(JNIEnv *env, void *dex_data, long dex_data_length, const char *argument) {
-    // get system class loader
-    jclass cClassLoader = (*env)->FindClass(env, "java/lang/ClassLoader");
-    jmethodID mSystemClassLoader = (*env)->GetStaticMethodID(env, cClassLoader,
-                                                             "getSystemClassLoader",
-                                                             "()Ljava/lang/ClassLoader;");
-    jobject oSystemClassLoader = (*env)->CallStaticObjectMethod(env, cClassLoader,
-                                                                mSystemClassLoader);
-
-    // load dex
-    jobject bufferDex = (*env)->NewDirectByteBuffer(env, dex_data, dex_data_length);
-    jclass cDexClassLoader = (*env)->FindClass(env, "dalvik/system/InMemoryDexClassLoader");
-    jmethodID mDexClassLoaderInit = (*env)->GetMethodID(env, cDexClassLoader, "<init>",
-                                                        "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V");
-    jobject oDexClassLoader = (*env)->NewObject(env, cDexClassLoader,
-                                                mDexClassLoaderInit,
-                                                bufferDex,
-                                                oSystemClassLoader);
-
-    if ( catch_exception(env) ) return 1;
-
-    // get loaded dex inject method
-    jmethodID mFindClass = (*env)->GetMethodID(env, cDexClassLoader, "loadClass",
-            "(Ljava/lang/String;Z)Ljava/lang/Class;");
-    jstring sInjectClassName = (*env)->NewStringUTF(env, INJECT_CLASS_NAME);
-    jclass cInject = (jclass) (*env)->CallObjectMethod(env, oDexClassLoader,
-                                                       mFindClass, sInjectClassName, (jboolean) 0);
-
-    if ( catch_exception(env) ) return 1;
-
-    // find method
-    jmethodID mLoaded = (*env)->GetStaticMethodID(env, cInject, INJECT_METHOD_NAME,
-                                                  INJECT_METHOD_SIGNATURE);
-
-    if ( catch_exception(env) ) return 1;
-
-    // invoke inject method
-    jstring stringArgument = (*env)->NewStringUTF(env, argument);
-
-    (*env)->CallStaticVoidMethod(env, cInject, mLoaded, stringArgument);
-
-    return catch_exception(env);
-}
-
-static void nativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
-    UNUSED(clazz);
-
-    if (res == 0) {
-        if ( dex != NULL ) {
-            if ( load_and_invoke_dex(env, dex, dex_size, "") ) {
-                LOGI("Inject dex failure");
-            }
-        }
-    }
+static void onModuleLoaded() {
+    read_dex_data();
 }
 
 static int shouldSkipUid(int uid) {
@@ -104,53 +33,78 @@ static int shouldSkipUid(int uid) {
     return 0;
 }
 
-static void onModuleLoaded() {
-    // called when the shared library of Riru core is loaded
+static void nativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
+    UNUSED(clazz);
 
-    int fd = open(INJECT_DEX_PATH, O_RDONLY);
-    if ( fd < 0 ) {
-        LOGE("Open dex file: %s", strerror(errno));
-
-        return ;
+    if (res == 0) {
+        load_and_invoke_dex(env, "system_server");
     }
+}
 
-    struct stat stat;
+static void appProcessPre(JNIEnv *env, jstring *jAppDataDir) {
+    memset(saved_package_name, 0, PATH_MAX);
 
-    if ( fstat(fd, &stat) < 0 ) {
-        LOGE("fetch size of dex file: %s", strerror(errno));
+    if (*jAppDataDir) {
+        const char *appDataDir = (*env)->GetStringUTFChars(env, jAppDataDir, NULL);
 
-        close(fd);
+        // /data/user/<user_id>/<package>
+        if (sscanf(appDataDir, "/data/%*[^/]/%*[^/]/%s", saved_package_name) == 1)
+            goto found;
 
-        return ;
+        // /mnt/expand/<id>/user/<user_id>/<package>
+        if (sscanf(appDataDir, "/mnt/expand/%*[^/]/%*[^/]/%*[^/]/%s", saved_package_name) == 1)
+            goto found;
+
+        // /data/data/<package>
+        if (sscanf(appDataDir, "/data/%*[^/]/%s", saved_package_name) == 1)
+            goto found;
+
+        // nothing found
+        saved_package_name[0] = '\0';
+
+        found:;
     }
+}
 
+static void appProcessPost(JNIEnv *env, const char *from, const char *package_name, jint uid) {
+    LOGD("%s: uid=%d, package=%s", from, uid, package_name);
 
-    dex = malloc(stat.st_size);
-    dex_size = stat.st_size;
-
-    uint8_t *ptr = (uint8_t *) dex;
-    int count = 0;
-
-    while ( count < stat.st_size ) {
-        int r = read(fd, ptr, stat.st_size - count);
-
-        if ( r < 0 ) {
-            LOGE("read dex: %s", strerror(errno));
-
-            free(dex);
-            close(fd);
-
-            dex = NULL;
-            dex_size = 0;
-
-            return ;
-        }
-
-        count += r;
-        ptr += r;
+    if (should_inject_package(package_name)) {
+        load_and_invoke_dex(env, "app");
+    } else {
+        free_dex_data();
     }
+}
 
-    close(fd);
+static void nativeForkAndSpecializePre(
+        JNIEnv *env, jclass clazz, jint *uid, jint *gid, jintArray *gids, jint *runtimeFlags,
+        jobjectArray *rlimits, jint *mountExternal, jstring *seInfo, jstring *niceName,
+        jintArray *fdsToClose, jintArray *fdsToIgnore, jboolean *is_child_zygote,
+        jstring *instructionSet, jstring *appDataDir, jboolean *isTopApp,
+        jobjectArray *pkgDataInfoList,
+        jobjectArray *whitelistedDataInfoList, jboolean *bindMountAppDataDirs,
+        jboolean *bindMountAppStorageDirs) {
+    appProcessPre(env, appDataDir);
+}
+
+static void nativeForkAndSpecializePost(JNIEnv *env, jclass clazz, jint res) {
+    if (res == 0) {
+        appProcessPost(env, "forkAndSpecialize", saved_package_name, getuid());
+    }
+}
+
+static void nativeSpecializeAppProcessPre(
+        JNIEnv *env, jclass clazz, jint *uid, jint *gid, jintArray *gids, jint *runtimeFlags,
+        jobjectArray *rlimits, jint *mountExternal, jstring *seInfo, jstring *niceName,
+        jboolean *startChildZygote, jstring *instructionSet, jstring *appDataDir,
+        jboolean *isTopApp, jobjectArray *pkgDataInfoList, jobjectArray *whitelistedDataInfoList,
+        jboolean *bindMountAppDataDirs, jboolean *bindMountAppStorageDirs) {
+    appProcessPre(env, appDataDir);
+}
+
+static void nativeSpecializeAppProcessPost(
+        JNIEnv *env, jclass clazz) {
+    appProcessPost(env, "specializeAppProcess", saved_package_name, getuid());
 }
 
 EXPORT
@@ -163,8 +117,9 @@ void *init(void *arg) {
 
     switch (phase) {
         case 1: {
-            int core_max_api_version = *(int*) arg;
-            riru_api_version = core_max_api_version <= TARGET_RIRU_API ? core_max_api_version : TARGET_RIRU_API;
+            int core_max_api_version = *(int *) arg;
+            riru_api_version = core_max_api_version <= TARGET_RIRU_API ? core_max_api_version
+                                                                       : TARGET_RIRU_API;
             return &riru_api_version;
         }
         case 2: {
@@ -181,6 +136,10 @@ void *init(void *arg) {
                     module->onModuleLoaded = &onModuleLoaded;
                     module->shouldSkipUid = &shouldSkipUid;
                     module->forkSystemServerPost = &nativeForkSystemServerPost;
+                    module->forkAndSpecializePre = &nativeForkAndSpecializePre;
+                    module->forkAndSpecializePost = &nativeForkAndSpecializePost;
+                    module->specializeAppProcessPre = &nativeSpecializeAppProcessPre;
+                    module->specializeAppProcessPost = &nativeSpecializeAppProcessPost;
 
                     return module;
                 }
@@ -196,6 +155,10 @@ void *init(void *arg) {
                     module->onModuleLoaded = &onModuleLoaded;
                     module->shouldSkipUid = &shouldSkipUid;
                     module->forkSystemServerPost = &nativeForkSystemServerPost;
+                    module->forkAndSpecializePre = &nativeForkAndSpecializePre;
+                    module->forkAndSpecializePost = &nativeForkAndSpecializePost;
+                    module->specializeAppProcessPre = &nativeSpecializeAppProcessPre;
+                    module->specializeAppProcessPost = &nativeSpecializeAppProcessPost;
 
                     return module;
                 }
