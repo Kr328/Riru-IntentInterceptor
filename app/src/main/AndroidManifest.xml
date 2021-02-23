@@ -2,23 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.github.kr328.intent">
 
+    <permission
+        android:name="com.github.kr328.intent.permission.INTERCEPT_INTENTS"
+        android:icon="@drawable/ic_flip"
+        android:description="@string/permission_description"
+        android:label="@string/permission_label"
+        android:protectionLevel="dangerous" />
+
     <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/AppThemeComposeLight"
-        android:fullBackupContent="@xml/backup_descriptor">
-        <activity
-            android:name=".MainActivity"
-            android:label="@string/app_name">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
-
+        android:allowBackup="false"
+        android:icon="@android:drawable/sym_def_app_icon"
+        android:label="@string/module_name" />
 </manifest>

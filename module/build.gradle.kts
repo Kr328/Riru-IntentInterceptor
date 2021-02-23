@@ -4,6 +4,8 @@ import java.security.MessageDigest
 
 plugins {
     id("com.android.application")
+    id("kotlinx-serialization")
+    kotlin("android")
 }
 
 val riruId = "intent_interceptor"
@@ -32,7 +34,7 @@ android {
     ndkVersion = "22.0.7026061"
 
     defaultConfig {
-        applicationId = "com.github.kr328.intent.module"
+        applicationId = "com.github.kr328.intent"
 
         minSdkVersion(moduleMinSdkVersion)
         targetSdkVersion(moduleTargetSdkVersion)
@@ -59,8 +61,14 @@ android {
     }
 
     buildTypes {
+        named("debug") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
         named("release") {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -206,7 +214,12 @@ dependencies {
 
     implementation(project(":shared"))
 
+    implementation(kotlin("stdlib"))
+    implementation("androidx.annotation:annotation:1.1.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
+
     implementation("rikka.ndk:riru:10")
+    implementation("rikka.ndk.thirdparty:xhook:1.2.0")
 }
 
 repositories {

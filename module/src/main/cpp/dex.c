@@ -19,7 +19,7 @@ void read_dex_data() {
     if (dex_data != NULL)
         return;
 
-    scope_fd int fd = open(INJECT_DEX_PATH, O_RDONLY);
+    scope_fd int fd = open(DEX_PATH, O_RDONLY);
     assert_syscall(fd < 0, "open dex file");
 
     struct stat s;
@@ -31,7 +31,7 @@ void read_dex_data() {
 
     dex_size = s.st_size;
 
-    LOGI("zygote: dex " INJECT_DEX_PATH);
+    LOGI("zygote: dex " DEX_PATH);
 }
 
 void free_dex_data() {
@@ -93,9 +93,11 @@ void load_and_invoke_dex(JNIEnv *env, const char *args) {
     assert_load("getMethod(...)");
 
     // invoke inject method
-    jstring stringArgument = (*env)->NewStringUTF(env, args);
+    jobjectArray argsArray = (*env)->NewObjectArray(env, 1,
+                                                    (*env)->FindClass(env, "java/lang/String"),
+                                                    (*env)->NewStringUTF(env, args));
 
-    (*env)->CallStaticVoidMethod(env, cInject, mLoaded, stringArgument);
+    (*env)->CallStaticVoidMethod(env, cInject, mLoaded, argsArray);
 
     assert_load("invoke(...)");
 }

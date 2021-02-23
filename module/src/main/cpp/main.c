@@ -37,19 +37,19 @@ static void nativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
     UNUSED(clazz);
 
     if (res == 0) {
-        load_and_invoke_dex(env, "system_server");
+        load_and_invoke_dex(env, "system");
     }
 }
 
-static void appProcessPre(JNIEnv *env, jstring jAppDataDir) {
-    inject_next_app = 0;
-
-    if (jAppDataDir) {
+static void appProcessPre(JNIEnv *env, int uid, jstring appDataDir) {
+    if (appDataDir) {
+        int user_id = uid / 100000;
         char package_name[PATH_MAX] = {0};
-        const char *appDataDir = (*env)->GetStringUTFChars(env, jAppDataDir, NULL);
+
+        const char *app_data_dir = (*env)->GetStringUTFChars(env, appDataDir, NULL);
 
         // /data/user/<user_id>/<package>
-        if (sscanf(appDataDir, "/data/%*[^/]/%*[^/]/%s", package_name) == 1)
+        if (sscanf(app_data_dir, "/data/%*[^/]/%*[^/]/%s", package_name) == 1)
             goto found;
 
         // /mnt/expand/<id>/user/<user_id>/<package>
@@ -65,10 +65,11 @@ static void appProcessPre(JNIEnv *env, jstring jAppDataDir) {
 
         found:
 
-        if (package_name[0] != 0)
-            inject_next_app = should_inject_package(package_name);
+        inject_next_app = should_inject_packages(user_id, package_name);
 
-        (*env)->ReleaseStringUTFChars(env, jAppDataDir, appDataDir);
+        (*env)->ReleaseStringUTFChars(env, appDataDir, app_data_dir);
+    } else {
+        inject_next_app = 0;
     }
 }
 
@@ -81,29 +82,27 @@ static void appProcessPost(JNIEnv *env) {
 }
 
 static void nativeForkAndSpecializePre(
-        JNIEnv *env, jclass clazz, jint *uid, jint *gid, jintArray *gids, jint *runtimeFlags,
+        JNIEnv *env, jclass cls, jint *uid, jint *gid, jintArray *gids, jint *runtimeFlags,
         jobjectArray *rlimits, jint *mountExternal, jstring *seInfo, jstring *niceName,
         jintArray *fdsToClose, jintArray *fdsToIgnore, jboolean *is_child_zygote,
-        jstring *instructionSet, jstring *appDataDir, jboolean *isTopApp,
-        jobjectArray *pkgDataInfoList,
-        jobjectArray *whitelistedDataInfoList, jboolean *bindMountAppDataDirs,
-        jboolean *bindMountAppStorageDirs) {
-    appProcessPre(env, *appDataDir);
+        jstring *instructionSet, jstring *appDataDir, jboolean *isTopApp, jobjectArray *pkgDataInfoList,
+        jobjectArray *whitelistedDataInfoList, jboolean *bindMountAppDataDirs, jboolean *bindMountAppStorageDirs) {
+    appProcessPre(env, *uid, *appDataDir);
+}
+
+static void nativeSpecializeAppProcessPre(
+        JNIEnv *env, jclass cls, jint *uid, jint *gid, jintArray *gids, jint *runtimeFlags,
+        jobjectArray *rlimits, jint *mountExternal, jstring *seInfo, jstring *niceName,
+        jboolean *startChildZygote, jstring *instructionSet, jstring *appDataDir,
+        jboolean *isTopApp, jobjectArray *pkgDataInfoList, jobjectArray *whitelistedDataInfoList,
+        jboolean *bindMountAppDataDirs, jboolean *bindMountAppStorageDirs) {
+    appProcessPre(env, *uid, *appDataDir);
 }
 
 static void nativeForkAndSpecializePost(JNIEnv *env, jclass clazz, jint res) {
     if (res == 0) {
         appProcessPost(env);
     }
-}
-
-static void nativeSpecializeAppProcessPre(
-        JNIEnv *env, jclass clazz, jint *uid, jint *gid, jintArray *gids, jint *runtimeFlags,
-        jobjectArray *rlimits, jint *mountExternal, jstring *seInfo, jstring *niceName,
-        jboolean *startChildZygote, jstring *instructionSet, jstring *appDataDir,
-        jboolean *isTopApp, jobjectArray *pkgDataInfoList, jobjectArray *whitelistedDataInfoList,
-        jboolean *bindMountAppDataDirs, jboolean *bindMountAppStorageDirs) {
-    appProcessPre(env, *appDataDir);
 }
 
 static void nativeSpecializeAppProcessPost(

@@ -1,3 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Riru-IntentInterceptor</string>
+    <string name="module_name">Intent Interceptor Runtime</string>
+    <string name="permission_label">Intent Interceptor</string>
+    <string name="permission_description">inject other app processes and modify activities intents</string>
 </resources>

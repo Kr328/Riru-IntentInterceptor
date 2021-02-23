@@ -6,10 +6,13 @@
 #include <limits.h>
 #include <stdio.h>
 
-int should_inject_package(const char *package_name) {
-    char buffer[PATH_MAX];
+int should_inject_packages(int user_id, const char *package_name) {
+    if (package_name[0] == 0)
+        return 0;
 
-    sprintf(buffer, PACKAGES_PATH "/%s.json", package_name);
+    char path[PATH_MAX];
 
-    return access(buffer, F_OK) == 0;
+    sprintf(path, FORMAT_TARGET, user_id, package_name);
+
+    return access(path, F_OK) == 0;
 }

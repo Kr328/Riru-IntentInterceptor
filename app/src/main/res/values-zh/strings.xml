@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="module_name">Intent Interceptor Runtime</string>
+    <string name="permission_label">意图拦截器</string>
+    <string name="permission_description">注入其他应用并拦截任意意图</string>
+</resources>
