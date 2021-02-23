@@ -8,3 +8,5 @@ build/
 .cxx/
 local.properties
 *.log
+keystore.properties
+*.jks

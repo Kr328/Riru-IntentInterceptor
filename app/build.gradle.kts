@@ -1,3 +1,5 @@
+import java.util.*
+
 plugins {
     id("com.android.application")
 }
@@ -20,9 +22,25 @@ android {
         versionName = moduleVersionName
     }
 
+    signingConfigs {
+        maybeCreate("release").apply {
+            val properties = Properties().apply {
+                rootProject.file("keystore.properties").inputStream().use {
+                    load(it)
+                }
+            }
+
+            storeFile = rootProject.file(Objects.requireNonNull(properties.getProperty("storeFile")))
+            storePassword = Objects.requireNonNull(properties.getProperty("storePassword"))
+            keyAlias = Objects.requireNonNull(properties.getProperty("keyAlias"))
+            keyPassword = Objects.requireNonNull(properties.getProperty("keyPassword"))
+        }
+    }
+
     buildTypes {
         named("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
