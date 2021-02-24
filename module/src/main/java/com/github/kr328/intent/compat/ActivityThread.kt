@@ -13,10 +13,6 @@ fun currentApplication(): Application? {
     return ActivityThread.currentApplication()
 }
 
-fun systemContext(): Context? {
-    return ActivityThread.currentActivityThread()?.systemContext
-}
-
 fun requireSystemContext(): Context {
     return ActivityThread.currentActivityThread()?.systemContext!!
 }

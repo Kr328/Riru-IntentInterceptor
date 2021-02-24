@@ -6,6 +6,8 @@ import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.UserHandle;
 
+import utils.Utils;
+
 public class Context {
     public Intent registerReceiverAsUser(
             BroadcastReceiver receiver,
@@ -14,6 +16,6 @@ public class Context {
             String broadcastPermission,
             Handler scheduler
     ) {
-        throw new IllegalArgumentException("Stub!");
+        return Utils.throwStub();
     }
 }

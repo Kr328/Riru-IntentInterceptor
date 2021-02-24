@@ -24,16 +24,18 @@ android {
 
     signingConfigs {
         maybeCreate("release").apply {
-            val properties = Properties().apply {
-                rootProject.file("keystore.properties").inputStream().use {
-                    load(it)
+            if (rootProject.file("keystore.properties").exists()) {
+                val properties = Properties().apply {
+                    rootProject.file("keystore.properties").inputStream().use {
+                        load(it)
+                    }
                 }
-            }
 
-            storeFile = rootProject.file(Objects.requireNonNull(properties.getProperty("storeFile")))
-            storePassword = Objects.requireNonNull(properties.getProperty("storePassword"))
-            keyAlias = Objects.requireNonNull(properties.getProperty("keyAlias"))
-            keyPassword = Objects.requireNonNull(properties.getProperty("keyPassword"))
+                storeFile = rootProject.file(Objects.requireNonNull(properties.getProperty("storeFile", "")))
+                storePassword = Objects.requireNonNull(properties.getProperty("storePassword", ""))
+                keyAlias = Objects.requireNonNull(properties.getProperty("keyAlias", ""))
+                keyPassword = Objects.requireNonNull(properties.getProperty("keyPassword", ""))
+            }
         }
     }
 

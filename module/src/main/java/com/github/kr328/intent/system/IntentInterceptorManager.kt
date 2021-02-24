@@ -1,5 +1,6 @@
 package com.github.kr328.intent.system
 
+import `$android`.app.ActivityManager
 import android.app.ActivityThread
 import android.os.*
 import com.github.kr328.intent.IIntentInterceptorService
@@ -11,6 +12,7 @@ import com.github.kr328.intent.system.observer.ApkObserver
 import com.github.kr328.intent.system.observer.PermissionObserver
 import com.github.kr328.intent.system.observer.UserObserver
 import com.github.kr328.intent.util.DaemonHandler
+import com.github.kr328.intent.util.mainLooperHandler
 import com.github.kr328.intent.util.useAs
 import com.github.kr328.intent.util.withPrivilege
 import java.io.File
@@ -71,10 +73,12 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
     }
 
     private fun killApps(apps: Collection<String>, userId: Int) {
+        val am = requireSystemContext().getSystemService(ActivityManager::class.java)
+
         apps.forEach {
             TLog.i("Killing $it/$userId")
 
-            SystemService.activity.forceStopPackage(it, userId)
+            am.forceStopPackageAsUser(it, userId)
         }
     }
 
@@ -86,11 +90,9 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
 
                     Event.Boot.enqueue(1000)
                 } else {
-                    ActivityThread.currentActivityThread()
-                        .useAs(ActivityThreadDefinition::class.java, true)
-                        .getHandler().post {
-                            Event.Started.enqueue()
-                        }
+                    mainLooperHandler.post {
+                        Event.Started.enqueue()
+                    }
                 }
             }
             Event.Started -> {
@@ -119,7 +121,8 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
                     }
                 }
 
-                val users = SystemService.user.getUserIds().toSet()
+                val users = requireSystemContext()
+                    .getSystemService(UserManager::class.java).getUserIds()
 
                 (this.users.keys - users).forEach {
                     Event.UserRemoved(it).enqueue()

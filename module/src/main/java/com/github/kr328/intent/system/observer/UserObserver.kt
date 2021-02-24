@@ -4,9 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import com.github.kr328.intent.compat.IntentConstants
-import com.github.kr328.intent.compat.registerReceiverForAllUsers
-import com.github.kr328.intent.compat.requireSystemContext
+import com.github.kr328.intent.compat.*
 import com.github.kr328.intent.shared.TLog
 
 object UserObserver : BroadcastReceiver() {
@@ -17,17 +15,15 @@ object UserObserver : BroadcastReceiver() {
 
     override fun onReceive(context: Context?, intent: Intent?) {
         when (intent?.action) {
-            IntentConstants.ACTION_USER_ADDED -> {
-                val userId = intent.getIntExtra(IntentConstants.EXTRA_USER_HANDLE, -1)
+            ACTION_USER_ADDED -> {
+                val userId = intent.getUserIdExtra()
 
-                if (userId >= 0)
-                    onAdded?.invoke(userId)
+                onAdded?.invoke(userId ?: return)
             }
-            IntentConstants.ACTION_USER_REMOVED -> {
-                val userId = intent.getIntExtra(IntentConstants.EXTRA_USER_HANDLE, -1)
+            ACTION_USER_REMOVED -> {
+                val userId = intent.getUserIdExtra()
 
-                if (userId >= 0)
-                    onRemoved?.invoke(userId)
+                onRemoved?.invoke(userId ?: return)
             }
         }
     }
@@ -52,8 +48,8 @@ object UserObserver : BroadcastReceiver() {
                 requireSystemContext().registerReceiverForAllUsers(
                     this,
                     IntentFilter().apply {
-                        addAction(IntentConstants.ACTION_USER_ADDED)
-                        addAction(IntentConstants.ACTION_USER_REMOVED)
+                        addAction(ACTION_USER_ADDED)
+                        addAction(ACTION_USER_REMOVED)
                     }
                 )
 

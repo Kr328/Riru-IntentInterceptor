@@ -5,17 +5,19 @@ import android.os.Parcelable;
 
 import java.util.List;
 
+import utils.Utils;
+
 abstract class BaseParceledListSlice<T> implements Parcelable {
     public BaseParceledListSlice(List<T> list) {
-        throw new IllegalArgumentException("Stub!");
+        Utils.throwStub();
     }
 
     public List<T> getList() {
-        throw new IllegalArgumentException("Stub!");
+        return Utils.throwStub();
     }
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        throw new IllegalArgumentException("Stub!");
+        Utils.throwStub();
     }
 }

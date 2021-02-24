@@ -1,8 +1,8 @@
 package $android.os;
 
-import stub.Stub;
+import utils.Utils;
 
 public class UserHandle {
-    public static UserHandle ALL = Stub.returnAny();
+    public static UserHandle ALL = Utils.throwStub();
 }
 

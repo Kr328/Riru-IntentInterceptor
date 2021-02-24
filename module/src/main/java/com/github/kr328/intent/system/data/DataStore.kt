@@ -34,10 +34,12 @@ class DataStore(private val userId: Int) {
     }
 
     fun update(): Boolean {
-        val modules = SystemService.packages.loadInstalledApps(PACKAGE_FLAGS, userId).asSequence()
-            .filter { it.isValid() }
-            .map { it.packageName to Module(it) }
-            .toMap()
+        val modules =
+            SystemService.packages.getPackagesByPermission(MODULE_PERMISSION, PACKAGE_FLAGS, userId)
+                .asSequence()
+                .filter { it.isValid() }
+                .map { it.packageName to Module(it) }
+                .toMap()
 
         if (this.modules == modules) {
             return false
