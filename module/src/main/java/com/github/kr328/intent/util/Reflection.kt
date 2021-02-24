@@ -24,9 +24,9 @@ fun <T> Any.useAs(definition: Class<T>, includePrivate: Boolean = false): T {
                         clazz.getField(field.name)
                     }
 
-                    if (method.parameterCount == 0 && method.returnType == f.type) {
+                    if (method.parameterTypes.isEmpty() && method.returnType == f.type) {
                         InvokeHandler.GetField(f)
-                    } else if (method.parameterCount == 1 && method.parameterTypes[0] == f.type) {
+                    } else if (method.parameterTypes.size == 1 && method.parameterTypes[0] == f.type) {
                         InvokeHandler.SetField(f)
                     } else {
                         throw NoSuchFieldException("unsupported field method: $method")

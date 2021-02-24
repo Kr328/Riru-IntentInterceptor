@@ -8,19 +8,6 @@ void cleanup_fd(const int *fd) {
     if (fd != NULL && *fd >= 0) close(*fd);
 }
 
-int write_full(int fd, const void *buf, unsigned int length) {
-    unsigned written = 0;
-
-    while (written < length) {
-        int w = write(fd, buf + written, length - written);
-        if ( w < 0 )
-            return w;
-        written += w;
-    }
-
-    return (int) written;
-}
-
 int read_full(int fd, void *buf, unsigned int length) {
     unsigned _read = 0;
 
