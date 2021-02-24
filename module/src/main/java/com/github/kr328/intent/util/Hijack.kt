@@ -18,7 +18,7 @@ class HijackIBinder(private val original: IBinder, private val replaced: IInterf
 }
 
 class HijackBinder(
-    private val original: Binder,
+    private val original: IBinder,
     private val replaced: Binder,
     private val codes: Set<Int>
 ) : Binder() {

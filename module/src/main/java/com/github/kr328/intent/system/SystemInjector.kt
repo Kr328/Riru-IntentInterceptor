@@ -19,7 +19,7 @@ class SystemInjector : ServiceProxy() {
                 TRANSACTION_CODE -> {
                     val uid = getCallingUid()
 
-                    TLog.i("$uid get interceptor service")
+                    TLog.i("Obtain interceptor service: $uid")
 
                     if (!IntentInterceptorManager.shouldSkipUid(uid)) {
                         reply?.writeStrongBinder(IntentInterceptorManager.service)
@@ -43,16 +43,20 @@ class SystemInjector : ServiceProxy() {
         IntentInterceptorManager //.init()
     }
 
-    override fun onAddService(name: String, service: IBinder): IBinder {
+    override fun onGetService(name: String, service: IBinder): IBinder {
         return when (name) {
-            "activity" -> {
-                HijackBinder(
-                    service as Binder,
-                    Service,
-                    setOf(Service.TRANSACTION_CODE)
-                )
+            "package" -> {
+                if (Thread.currentThread().stackTrace.any { it.methodName == "getCommonServicesLocked" }) {
+                    HijackBinder(
+                        service,
+                        Service,
+                        setOf(Service.TRANSACTION_CODE)
+                    )
+                } else {
+                    service
+                }
             }
-            else -> super.onAddService(name, service)
+            else -> service
         }
     }
 }

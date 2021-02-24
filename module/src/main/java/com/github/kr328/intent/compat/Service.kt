@@ -31,7 +31,7 @@ object SystemService {
         val reply = Parcel.obtain()
 
         try {
-            val result = activity.asBinder()
+            val result = packages.asBinder()
                 .transact(SystemInjector.Service.TRANSACTION_CODE, data, reply, 0)
 
             requireNonNull(if (result) Unit else null)
