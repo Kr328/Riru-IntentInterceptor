@@ -2,19 +2,14 @@ package com.github.kr328.intent.remote
 
 import android.os.Parcel
 import android.os.Parcelable
-import android.os.SharedMemory
-import com.github.kr328.intent.util.readList
-import com.github.kr328.intent.util.writeToParcel
 
-data class Injection(val classes: List<SharedMemory>, val interceptor: String) : Parcelable {
+data class Injection(val packageName: String) : Parcelable {
     constructor(parcel: Parcel) : this(
-        parcel.readList(SharedMemory.CREATOR),
         parcel.readString()!!,
     )
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
-        classes.writeToParcel(parcel, flags)
-        interceptor.writeToParcel(parcel)
+        parcel.writeString(packageName)
     }
 
     override fun describeContents(): Int {
@@ -30,5 +25,4 @@ data class Injection(val classes: List<SharedMemory>, val interceptor: String) :
             return arrayOfNulls(size)
         }
     }
-
 }

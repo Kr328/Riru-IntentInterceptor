@@ -35,7 +35,7 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
         data class UserRemoved(val userId: Int) : Event()
     }
 
-    private val scopes: MutableMap<Int, ScopedContext> = mutableMapOf()
+    private val users: MutableMap<Int, UserScope> = mutableMapOf()
 
     val service = object : IIntentInterceptorService.Stub() {
         override fun open(packageName: String?): List<Injection> {
@@ -50,18 +50,11 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
             if (pkg.applicationInfo?.uid != uid)
                 return emptyList()
 
-            val scope = scopes[userId] ?: return emptyList()
+            val scope = users[userId] ?: return emptyList()
 
             val module = scope.data.targets[packageName] ?: return emptyList()
 
-            return module.modules.mapNotNull {
-                scope.data.modules[it]?.run {
-                    Injection(
-                        scope.apk[this.packageName]!!,
-                        this.interceptor
-                    )
-                }
-            }
+            return module.modules.map(::Injection)
         }
     }
 
@@ -73,7 +66,7 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
 
     fun shouldSkipUid(uid: Int): Boolean {
         return withPrivilege { SystemService.packages.getPackagesForUid(uid) }?.none {
-            scopes[uid.userId]?.data?.targets?.containsKey(it) == true
+            users[uid.userId]?.data?.targets?.containsKey(it) == true
         } == true
     }
 
@@ -119,7 +112,7 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
                     Event.UserRemoved(it).enqueue()
                 }
 
-                scopes.forEach { (userId, scope) ->
+                users.forEach { (userId, scope) ->
                     if (scope.update()) {
                         killApps(scope.data.targets.keys, userId)
                     }
@@ -127,53 +120,49 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
 
                 val users = SystemService.user.getUserIds().toSet()
 
-                (scopes.keys - users).forEach {
+                (this.users.keys - users).forEach {
                     Event.UserRemoved(it).enqueue()
                 }
 
-                (users - scopes.keys).forEach {
+                (users - this.users.keys).forEach {
                     Event.UserAdded(it).enqueue()
                 }
             }
             is Event.ApkAdded -> {
                 killApps(
-                    scopes[event.userId]?.updatePackage(event.packageName) ?: emptyList(),
+                    users[event.userId]?.updatePackage(event.packageName) ?: emptyList(),
                     event.userId
                 )
             }
             is Event.ApkRemoved -> {
                 killApps(
-                    scopes[event.userId]?.removePackage(event.packageName) ?: emptyList(),
+                    users[event.userId]?.removePackage(event.packageName) ?: emptyList(),
                     event.userId
                 )
             }
             is Event.ApkUpdated -> {
                 killApps(
-                    scopes[event.userId]?.updatePackage(event.packageName) ?: emptyList(),
+                    users[event.userId]?.updatePackage(event.packageName) ?: emptyList(),
                     event.userId
                 )
             }
             is Event.PermissionChanged -> {
                 SystemService.packages.getPackagesForUid(event.uid)?.forEach {
                     killApps(
-                        scopes[event.userId]?.updatePackage(it) ?: emptyList(),
+                        users[event.userId]?.updatePackage(it) ?: emptyList(),
                         event.userId,
                     )
                 }
             }
             is Event.UserAdded -> {
-                scopes.remove(event.userId)?.close()
-
-                scopes[event.userId] = ScopedContext(event.userId).apply {
+                users[event.userId] = UserScope(event.userId).apply {
                     if (update()) {
                         killApps(data.targets.keys, event.userId)
                     }
                 }
             }
             is Event.UserRemoved -> {
-                scopes.remove(event.userId)?.apply {
-                    close()
-
+                users.remove(event.userId)?.apply {
                     File(DataStore.DATA_PATH).resolve(event.userId.toString()).deleteRecursively()
                 }
             }
@@ -188,7 +177,7 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
                 val userId = it.name.toIntOrNull()
 
                 if (userId != null) {
-                    scopes[userId] = ScopedContext(userId).apply(ScopedContext::load)
+                    users[userId] = UserScope(userId).apply(UserScope::load)
                 }
             }
         } catch (e: Exception) {

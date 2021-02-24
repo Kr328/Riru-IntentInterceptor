@@ -7,13 +7,13 @@ import java.lang.reflect.Method
 class LoadedInterceptor(
     private val obj: Any,
     private val intercept: Method,
-    private val className: String,
+    private val packageName: String,
 ) {
     operator fun invoke(intent: Intent): Intent {
         return try {
             (intercept.invoke(obj, intent) as Intent?) ?: intent
         } catch (e: Exception) {
-            TLog.w("$className: ${e.message}", e)
+            TLog.w("$packageName: ${e.message}", e)
 
             intent
         }
