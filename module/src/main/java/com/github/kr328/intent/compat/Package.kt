@@ -15,6 +15,10 @@ fun IPackageManager.isPermissionGranted(uid: Int, permission: String): Boolean {
     return checkUidPermission(permission, uid) == PackageManager.PERMISSION_GRANTED
 }
 
-fun IPackageManager.getPackagesByPermission(permission: String, flags: Int, userId: Int): List<PackageInfo> {
+fun IPackageManager.getPackagesByPermission(
+    permission: String,
+    flags: Int,
+    userId: Int
+): List<PackageInfo> {
     return getPackagesHoldingPermissions(arrayOf(permission), flags, userId).list
 }

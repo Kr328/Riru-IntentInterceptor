@@ -5,7 +5,6 @@ import android.os.IBinder
 import android.os.Parcel
 import android.os.Process
 import com.github.kr328.intent.compat.ServiceProxy
-import com.github.kr328.intent.shared.Constants
 import com.github.kr328.intent.shared.TLog
 import com.github.kr328.intent.util.HijackBinder
 

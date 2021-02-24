@@ -8,15 +8,6 @@ import java.util.List;
 import utils.Utils;
 
 public class ParceledListSlice<T extends Parcelable> extends BaseParceledListSlice<T> {
-    public ParceledListSlice(List<T> list) {
-        super(list);
-    }
-
-    @Override
-    public int describeContents() {
-        throw new IllegalArgumentException("Stub!");
-    }
-
     public static final Creator<ParceledListSlice<?>> CREATOR = new Creator<ParceledListSlice<?>>() {
         @Override
         public ParceledListSlice<?> createFromParcel(Parcel source) {
@@ -28,4 +19,13 @@ public class ParceledListSlice<T extends Parcelable> extends BaseParceledListSli
             return Utils.throwStub();
         }
     };
+
+    public ParceledListSlice(List<T> list) {
+        super(list);
+    }
+
+    @Override
+    public int describeContents() {
+        throw new IllegalArgumentException("Stub!");
+    }
 }

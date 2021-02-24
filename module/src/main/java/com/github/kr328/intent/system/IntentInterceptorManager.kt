@@ -13,7 +13,6 @@ import com.github.kr328.intent.system.observer.PermissionObserver
 import com.github.kr328.intent.system.observer.UserObserver
 import com.github.kr328.intent.util.DaemonHandler
 import com.github.kr328.intent.util.mainLooperHandler
-import com.github.kr328.intent.util.useAs
 import com.github.kr328.intent.util.withPrivilege
 import java.io.File
 
