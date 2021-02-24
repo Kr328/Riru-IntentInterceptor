@@ -6,7 +6,7 @@ import android.os.IBinder.DeathRecipient
 import android.os.IInterface
 import android.os.Parcel
 
-class HijackIBinder(private val original: IBinder, private val replaced: IInterface) :
+class HijackIBinder<T : IInterface>(private val original: IBinder, private val replaced: T) :
     IBinder by original {
     override fun queryLocalInterface(descriptor: String): IInterface? {
         if (descriptor == interfaceDescriptor) {

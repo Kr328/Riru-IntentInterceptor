@@ -1,12 +1,10 @@
 package com.github.kr328.intent.app
 
-import android.app.IActivityManager
-import android.app.IActivityTaskManager
 import android.os.IBinder
 import android.os.Process
 import com.github.kr328.intent.compat.ServiceProxy
-import com.github.kr328.intent.compat.asActivityManager
-import com.github.kr328.intent.compat.asActivityTaskManager
+import com.github.kr328.intent.compat.createActivityHijack
+import com.github.kr328.intent.compat.createActivityTaskHijack
 import com.github.kr328.intent.shared.TLog
 import com.github.kr328.intent.util.HijackIBinder
 
@@ -25,21 +23,13 @@ class AppInjector : ServiceProxy() {
                 "activity" -> {
                     HijackIBinder(
                         service,
-                        ActivityHijack(
-                            IActivityManager::class.java,
-                            service.asActivityManager(),
-                            InterceptorManager::intercept
-                        ).hijacked
+                        service.createActivityHijack(InterceptorManager::intercept)
                     )
                 }
                 "activity_task" -> {
                     HijackIBinder(
                         service,
-                        ActivityHijack(
-                            IActivityTaskManager::class.java,
-                            service.asActivityTaskManager(),
-                            InterceptorManager::intercept
-                        ).hijacked
+                        service.createActivityTaskHijack(InterceptorManager::intercept)
                     )
                 }
                 else -> {
