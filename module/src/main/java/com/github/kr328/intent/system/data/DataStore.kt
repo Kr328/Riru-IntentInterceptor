@@ -21,11 +21,11 @@ class DataStore(private val userId: Int) {
 
     fun load() {
         try {
-            val modules = modulesFile.loadJsonFiles(Module.serializer(), Module::packageName)
-            val targets = targetsFile.loadJsonFiles(Target.serializer(), Target::packageName)
+            val modules = modulesFile.loadJsonFiles(Module)
+            val targets = targetsFile.loadJsonFiles(Target)
 
-            this.modules = modules.toMutableMap()
-            this.targets = targets
+            this.modules = modules.map { it.packageName to it }.toMap().toMutableMap()
+            this.targets = targets.map { it.packageName to it }.toMap()
         } catch (e: Exception) {
             TLog.w("Configuration load: ${e.message}", e)
 
@@ -70,7 +70,7 @@ class DataStore(private val userId: Int) {
                 return emptySet()
             }
 
-            val changed = modules[packageName]!!.target + module.target
+            val changed = modules[packageName]!!.targets + module.targets
 
             modules[packageName] = module
 
@@ -89,11 +89,11 @@ class DataStore(private val userId: Int) {
 
         this.store()
 
-        return module.target.toSet()
+        return module.targets.toSet()
     }
 
     fun removePackage(packageName: String): Set<String> {
-        return modules.remove(packageName)?.target?.toSet()?.apply {
+        return modules.remove(packageName)?.targets?.toSet()?.apply {
             collectTargets()
 
             store()
@@ -102,14 +102,14 @@ class DataStore(private val userId: Int) {
 
     private fun collectTargets() {
         this.targets = modules.values
-            .flatMap { it.target.map { t -> t to it.packageName } }
+            .flatMap { it.targets.map { t -> t to it.packageName } }
             .groupBy(Pair<String, String>::first, Pair<String, String>::second)
             .mapValues { Target(it.key, it.value.toSet()) }
     }
 
     private fun store() {
-        modules.storeJsonFiles(Module.serializer(), { it.value.packageName }, modulesFile)
-        targets.storeJsonFiles(Target.serializer(), { it.value.packageName }, targetsFile)
+        modules.values.storeJsonFiles({ it.packageName }, modulesFile)
+        targets.values.storeJsonFiles({ it.packageName }, targetsFile)
     }
 
     private fun PackageInfo.isValid(): Boolean {

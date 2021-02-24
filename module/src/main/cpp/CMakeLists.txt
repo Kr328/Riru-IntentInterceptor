@@ -25,7 +25,6 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LINKER_FLAGS}")
 set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${LINKER_FLAGS}")
 
 find_package(riru REQUIRED CONFIG)
-find_package(xhook REQUIRED CONFIG)
 
 add_definitions(
         "-DRIRU_NAME=\"${RIRU_NAME}\""
@@ -35,5 +34,5 @@ add_definitions(
 )
 
 add_library(riru_${RIRU_MODULE_ID} SHARED main.c config.c utils.c dex.c)
-target_link_libraries(riru_${RIRU_MODULE_ID} log riru::riru xhook::xhook)
+target_link_libraries(riru_${RIRU_MODULE_ID} log riru::riru)
 set_target_properties(riru_${RIRU_MODULE_ID} PROPERTIES LINK_FLAGS_RELEASE -s)

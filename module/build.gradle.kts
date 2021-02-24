@@ -9,7 +9,6 @@ import java.security.MessageDigest
 
 plugins {
     id("com.android.application")
-    id("kotlinx-serialization")
     kotlin("android")
 }
 
@@ -244,10 +243,8 @@ dependencies {
 
     implementation(kotlin("stdlib"))
     implementation("androidx.annotation:annotation:1.1.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
 
     implementation("rikka.ndk:riru:10")
-    implementation("rikka.ndk.thirdparty:xhook:1.2.0")
 }
 
 repositories {
