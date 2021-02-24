@@ -21,7 +21,3 @@
 #-renamesourcefileattribute SourceFile
 
 -dontobfuscate
-
--keep class com.github.kr328.intent.Injector {
-    *;
-}
