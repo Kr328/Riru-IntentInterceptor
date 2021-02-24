@@ -13,6 +13,8 @@ buildscript {
         classpath("com.android.tools.build:gradle:4.1.2")
         classpath(kotlin("gradle-plugin", version = kotlinVersion))
         classpath(kotlin("serialization", version = kotlinVersion))
+        classpath("com.google.guava:guava:30.1-jre")
+        classpath("org.smali:dexlib2:2.4.0")
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files

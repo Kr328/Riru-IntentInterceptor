@@ -87,7 +87,8 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
                     Event.Boot.enqueue(1000)
                 } else {
                     ActivityThread.currentActivityThread()
-                        .useAs(ActivityThreadDefinition::class.java, true).getHandler().post {
+                        .useAs(ActivityThreadDefinition::class.java, true)
+                        .getHandler().post {
                             Event.Started.enqueue()
                         }
                 }

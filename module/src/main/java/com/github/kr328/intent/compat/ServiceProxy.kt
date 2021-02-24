@@ -23,15 +23,17 @@ abstract class ServiceProxy : InvocationHandler {
     fun install() {
         if (original != null) return
 
-        ServiceManager::class.java.useAs(ServiceManagerDefinition::class.java, true).apply {
-            original = getIServiceManager()
+        ServiceManager::class.java
+            .useAs(ServiceManagerDefinition::class.java, true)
+            .apply {
+                original = getIServiceManager()
 
-            sIServiceManager = Proxy.newProxyInstance(
-                ServiceProxy::class.java.classLoader,
-                arrayOf<Class<*>>(IServiceManager::class.java),
-                this@ServiceProxy
-            ) as IServiceManager
-        }
+                sIServiceManager = Proxy.newProxyInstance(
+                    ServiceProxy::class.java.classLoader,
+                    arrayOf<Class<*>>(IServiceManager::class.java),
+                    this@ServiceProxy
+                ) as IServiceManager
+            }
     }
 
     override fun invoke(proxy: Any, method: Method, args: Array<Any>): Any? {

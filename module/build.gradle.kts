@@ -1,4 +1,9 @@
 import org.gradle.kotlin.dsl.support.zipTo
+import org.jf.dexlib2.DexFileFactory
+import org.jf.dexlib2.rewriter.DexRewriter
+import org.jf.dexlib2.rewriter.Rewriter
+import org.jf.dexlib2.rewriter.RewriterModule
+import org.jf.dexlib2.rewriter.Rewriters
 import java.net.URI
 import java.security.MessageDigest
 
@@ -17,8 +22,8 @@ val moduleName = "Riru - Intent Interceptor"
 val moduleDescription = "A module of Riru. Allow modules modify activity intents."
 val moduleAuthor = "Kr328"
 val moduleFiles = listOf(
-        "system/framework/boot-intent-interceptor.dex",
-        "system/app/IntentInterceptor/IntentInterceptor.apk"
+    "system/framework/boot-intent-interceptor.dex",
+    "system/app/IntentInterceptor/IntentInterceptor.apk"
 )
 
 val binaryTypes = setOf("dex", "so", "apk")
@@ -47,10 +52,10 @@ android {
         externalNativeBuild {
             cmake {
                 arguments(
-                        "-DRIRU_NAME:STRING=$riruName",
-                        "-DRIRU_MODULE_ID:STRING=$riruId",
-                        "-DRIRU_MODULE_VERSION_CODE:INTEGER=$versionCode",
-                        "-DRIRU_MODULE_VERSION_NAME:STRING=$versionName"
+                    "-DRIRU_NAME:STRING=$riruName",
+                    "-DRIRU_MODULE_ID:STRING=$riruId",
+                    "-DRIRU_MODULE_VERSION_CODE:INTEGER=$versionCode",
+                    "-DRIRU_MODULE_VERSION_NAME:STRING=$versionName"
                 )
             }
         }
@@ -64,12 +69,18 @@ android {
         named("debug") {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
         named("release") {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
@@ -90,7 +101,8 @@ android {
         val zipFile = buildDir.resolve("outputs/$prefix-$name.zip")
         val zipContent = buildDir.resolve("intermediates/magisk/$name")
         val apkFile = this.outputs.first()?.outputFile ?: error("apk not found")
-        val minSdkVersion = packageApplicationProvider?.get()?.minSdkVersion?.get() ?: error("invalid min sdk version")
+        val minSdkVersion = packageApplicationProvider?.get()?.minSdkVersion?.get()
+            ?: error("invalid min sdk version")
         val regexPlaceholder = Regex("%%%(\\S+)%%%")
         val variant = this.name
 
@@ -164,10 +176,10 @@ android {
                     include("lib/**")
                     eachFile {
                         path = path
-                                .replace("lib/x86_64", "system_x86/lib64")
-                                .replace("lib/x86", "system_x86/lib")
-                                .replace("lib/arm64-v8a", "system/lib64")
-                                .replace("lib/armeabi-v7a", "system/lib")
+                            .replace("lib/x86_64", "system_x86/lib64")
+                            .replace("lib/x86", "system_x86/lib")
+                            .replace("lib/arm64-v8a", "system/lib64")
+                            .replace("lib/armeabi-v7a", "system/lib")
                     }
                 }
 
@@ -185,24 +197,40 @@ android {
             }
 
             zipContent.resolve("extras.files")
-                    .writeText(moduleFiles.joinToString("\n") + "\n")
+                .writeText(moduleFiles.joinToString("\n") + "\n")
 
             fileTree(zipContent)
-                    .filter { it.isFile }
-                    .filterNot { it.extension in binaryTypes }
-                    .forEach { it.writeText(it.readText().replace("\r\n", "\n")) }
+                .filter { it.isFile }
+                .filterNot { it.extension in binaryTypes }
+                .forEach { it.writeText(it.readText().replace("\r\n", "\n")) }
 
-            fileTree(zipContent)
-                    .matching { exclude("customize.sh", "verify.sh", "META-INF", "README.md") }
-                    .filter { it.isFile }
-                    .forEach {
-                        val sha256sum = MessageDigest.getInstance("SHA-256").digest(it.readBytes())
-                        val sha256text = sha256sum.joinToString(separator = "") { b ->
-                            String.format("%02x", b.toInt() and 0xFF)
+            zipContent.resolve("system/framework/boot-intent-interceptor.dex").apply {
+                val dex = DexRewriter(object : RewriterModule() {
+                    override fun getTypeRewriter(rewriters: Rewriters): Rewriter<String> {
+                        return Rewriter {
+                            if (it.startsWith("L$")) {
+                                "L" + it.substring(2)
+                            } else {
+                                it
+                            }
                         }
-
-                        File(it.absolutePath + ".sha256sum").writeText(sha256text)
                     }
+                }).dexFileRewriter.rewrite(DexFileFactory.loadDexFile(this, null))
+
+                DexFileFactory.writeDexFile(absolutePath, dex)
+            }
+
+            fileTree(zipContent)
+                .matching { exclude("customize.sh", "verify.sh", "META-INF", "README.md") }
+                .filter { it.isFile }
+                .forEach {
+                    val sha256sum = MessageDigest.getInstance("SHA-256").digest(it.readBytes())
+                    val sha256text = sha256sum.joinToString(separator = "") { b ->
+                        String.format("%02x", b.toInt() and 0xFF)
+                    }
+
+                    File(it.absolutePath + ".sha256sum").writeText(sha256text)
+                }
 
             zipTo(zipFile, zipContent)
         }
