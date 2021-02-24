@@ -55,16 +55,6 @@ void load_and_invoke_dex(JNIEnv *env, const char *args) {
     if (dex_size == 0)
         return;
 
-    // get system class loader
-    jclass cClassLoader = (*env)->FindClass(env, "java/lang/ClassLoader");
-    jmethodID mSystemClassLoader = (*env)->GetStaticMethodID(env, cClassLoader,
-                                                             "getSystemClassLoader",
-                                                             "()Ljava/lang/ClassLoader;");
-    jobject oSystemClassLoader = (*env)->CallStaticObjectMethod(env, cClassLoader,
-                                                                mSystemClassLoader);
-
-    assert_load("getSystemClassLoader(...)");
-
     // load dex
     jobject bufferDex = (*env)->NewDirectByteBuffer(env, dex_data, dex_size);
     jclass cDexClassLoader = (*env)->FindClass(env, "dalvik/system/InMemoryDexClassLoader");
@@ -73,7 +63,7 @@ void load_and_invoke_dex(JNIEnv *env, const char *args) {
     jobject oDexClassLoader = (*env)->NewObject(env, cDexClassLoader,
                                                 mDexClassLoaderInit,
                                                 bufferDex,
-                                                oSystemClassLoader);
+                                                NULL);
 
     assert_load("new InMemoryDexClassLoader(...)");
 
