@@ -1,3 +1,5 @@
+@file:Suppress("UNCHECKED_CAST")
+
 package com.github.kr328.intent.compat
 
 import android.app.ActivityManagerNative
@@ -6,7 +8,6 @@ import android.app.IActivityTaskManager
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
-import com.github.kr328.intent.util.unsafeCast
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -20,7 +21,7 @@ class ActivityHijack<T>(
         clazz.classLoader,
         arrayOf(clazz),
         this
-    ).unsafeCast()
+    ) as T
 
     override fun invoke(proxy: Any?, method: Method, args: Array<Any>?): Any? {
         args ?: return method.invoke(original)
