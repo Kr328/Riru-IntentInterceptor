@@ -12,7 +12,7 @@ class LoadedInterceptor(
     operator fun invoke(intent: Intent): Intent {
         return try {
             (intercept.invoke(obj, intent) as Intent?) ?: intent
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             TLog.w("$packageName: ${e.message}", e)
 
             intent
