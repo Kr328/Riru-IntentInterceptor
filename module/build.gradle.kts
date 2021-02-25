@@ -1,36 +1,25 @@
-import org.gradle.kotlin.dsl.support.zipTo
-import org.jf.dexlib2.DexFileFactory
-import org.jf.dexlib2.rewriter.DexRewriter
-import org.jf.dexlib2.rewriter.Rewriter
-import org.jf.dexlib2.rewriter.RewriterModule
-import org.jf.dexlib2.rewriter.Rewriters
 import java.net.URI
-import java.security.MessageDigest
 
 plugins {
     id("com.android.application")
     kotlin("android")
+    id("riru")
 }
-
-val riruId = "intent_interceptor"
-val riruApi = 9
-val riruName = "v22.0"
-
-val moduleId = "riru_intent_interceptor"
-val moduleName = "Riru - Intent Interceptor"
-val moduleDescription = "A module of Riru. Allow modules modify activity intents."
-val moduleAuthor = "Kr328"
-val moduleFiles = listOf(
-    "system/framework/boot-intent-interceptor.dex",
-    "system/app/IntentInterceptor/IntentInterceptor.apk"
-)
-
-val binaryTypes = setOf("dex", "so", "apk")
 
 val moduleVersionCode: Int by extra
 val moduleVersionName: String by extra
 val moduleMinSdkVersion: Int by extra
 val moduleTargetSdkVersion: Int by extra
+
+riru {
+    id = "riru_intent_interceptor"
+    name = "Riru - Intent Interceptor"
+    description = "A module of Riru. Allow modules modify activity intents."
+    author = "Kr328"
+    dexName = "boot-intent-interceptor.dex"
+    minApi = 9
+    minApiName = "22.0"
+}
 
 android {
     compileSdkVersion(moduleTargetSdkVersion)
@@ -51,8 +40,9 @@ android {
         externalNativeBuild {
             cmake {
                 arguments(
-                    "-DRIRU_NAME:STRING=$riruName",
-                    "-DRIRU_MODULE_ID:STRING=$riruId",
+                    "-DRIRU_NAME:STRING=${riru.name}",
+                    "-DRIRU_MODULE_ID:STRING=${riru.riruId}",
+                    "-DRIRU_DEX_NAME:STRING=${riru.dexName}",
                     "-DRIRU_MODULE_VERSION_CODE:INTEGER=$versionCode",
                     "-DRIRU_MODULE_VERSION_NAME:STRING=$versionName"
                 )
@@ -93,147 +83,6 @@ android {
             path = file("src/main/cpp/CMakeLists.txt")
         }
     }
-
-    applicationVariants.all {
-        val task = assembleProvider?.get() ?: error("assemble task not found")
-        val prefix = moduleId.replace('_', '-')
-        val zipFile = buildDir.resolve("outputs/$prefix-$name.zip")
-        val zipContent = buildDir.resolve("intermediates/magisk/$name")
-        val apkFile = this.outputs.first()?.outputFile ?: error("apk not found")
-        val minSdkVersion = packageApplicationProvider?.get()?.minSdkVersion?.get()
-            ?: error("invalid min sdk version")
-        val regexPlaceholder = Regex("%%%(\\S+)%%%")
-        val variant = this.name
-
-        task.doLast {
-            zipContent.deleteRecursively()
-
-            zipContent.mkdirs()
-
-            val apkTree = zipTree(apkFile)
-
-            copy {
-                into(zipContent)
-
-                from(file("src/main/raw")) {
-                    exclude("riru.sh", "module.prop", "riru/module.prop.new", "dist-gitattributes")
-                }
-
-                from(file("src/main/raw/dist-gitattributes")) {
-                    rename { ".gitattributes" }
-                }
-
-                from(file("src/main/raw/riru.sh")) {
-                    filter { line ->
-                        line.replace(regexPlaceholder) {
-                            when (it.groupValues[1]) {
-                                "RIRU_MODULE_ID" -> riruId
-                                "RIRU_MIN_API_VERSION" -> riruApi.toString()
-                                "RIRU_MIN_VERSION_NAME" -> riruName
-                                "RURU_MIN_SDK_VERSION" -> minSdkVersion.toString()
-                                else -> ""
-                            }
-                        }
-                    }
-                }
-
-                from(file("src/main/raw/module.prop")) {
-                    filter { line ->
-                        line.replace(regexPlaceholder) {
-                            when (it.groupValues[1]) {
-                                "MAGISK_ID" -> moduleId
-                                "MAIGKS_NAME" -> moduleName
-                                "MAGISK_VERSION_NAME" -> versionName!!
-                                "MAGISK_VERSION_CODE" -> versionCode.toString()
-                                "MAGISK_AUTHOR" -> moduleAuthor
-                                "MAGISK_DESCRIPTION" -> moduleDescription
-                                else -> ""
-                            }
-                        }
-                    }
-                }
-
-                from(file("src/main/raw/riru/module.prop.new")) {
-                    into("riru/")
-
-                    filter { line ->
-                        line.replace(regexPlaceholder) {
-                            when (it.groupValues[1]) {
-                                "RIRU_NAME" -> moduleName.removePrefix("Riru - ")
-                                "RIRU_VERSION_NAME" -> versionName!!
-                                "RIRU_VERSION_CODE" -> versionCode.toString()
-                                "RIRU_AUTHOR" -> moduleAuthor
-                                "RIRU_DESCRIPTION" -> moduleDescription
-                                "RIRU_API" -> riruApi.toString()
-                                else -> ""
-                            }
-                        }
-                    }
-                }
-
-                from(apkTree) {
-                    include("lib/**")
-                    eachFile {
-                        path = path
-                            .replace("lib/x86_64", "system_x86/lib64")
-                            .replace("lib/x86", "system_x86/lib")
-                            .replace("lib/arm64-v8a", "system/lib64")
-                            .replace("lib/armeabi-v7a", "system/lib")
-                    }
-                }
-
-                from(apkTree) {
-                    include("classes.dex")
-                    eachFile {
-                        path = "system/framework/boot-intent-interceptor.dex"
-                    }
-                }
-
-                from(project(":app").buildDir.resolve("outputs/apk/$variant/app-$variant.apk")) {
-                    into("system/app/IntentInterceptor")
-                    rename { "IntentInterceptor.apk" }
-                }
-            }
-
-            zipContent.resolve("extras.files")
-                .writeText(moduleFiles.joinToString("\n") + "\n")
-
-            fileTree(zipContent)
-                .filter { it.isFile }
-                .filterNot { it.extension in binaryTypes }
-                .forEach { it.writeText(it.readText().replace("\r\n", "\n")) }
-
-            zipContent.resolve("system/framework/boot-intent-interceptor.dex").apply {
-                val dex = DexRewriter(object : RewriterModule() {
-                    override fun getTypeRewriter(rewriters: Rewriters): Rewriter<String> {
-                        return Rewriter {
-                            if (it.startsWith("L$")) {
-                                "L" + it.substring(2)
-                            } else {
-                                it
-                            }
-                        }
-                    }
-                }).dexFileRewriter.rewrite(DexFileFactory.loadDexFile(this, null))
-
-                DexFileFactory.writeDexFile(absolutePath, dex)
-            }
-
-            fileTree(zipContent)
-                .matching { exclude("customize.sh", "verify.sh", "META-INF", "README.md") }
-                .filter { it.isFile }
-                .forEach {
-                    val sha256sum = MessageDigest.getInstance("SHA-256").digest(it.readBytes())
-                    val sha256text = sha256sum.joinToString(separator = "") { b ->
-                        String.format("%02x", b.toInt() and 0xFF)
-                    }
-
-                    File(it.absolutePath + ".sha256sum").writeText(sha256text)
-                }
-
-            zipTo(zipFile, zipContent)
-        }
-    }
 }
 
 dependencies {
@@ -249,4 +98,25 @@ dependencies {
 
 repositories {
     maven { url = URI("https://dl.bintray.com/rikkaw/Libraries") }
+}
+
+afterEvaluate {
+    android.applicationVariants.forEach {
+        val cName = it.name.capitalize()
+
+        val cp = tasks.register("copyModuleApk$cName", Copy::class.java) {
+            from(project(":app").buildDir
+                .resolve("outputs/apk/${it.name}/app-${it.name}.apk"))
+
+            into(generatedMagiskDir(it)
+                .resolve("system/app/IntentInterceptor"))
+
+            rename {
+                "IntentInterceptor.apk"
+            }
+        }
+
+        tasks["mergeMagisk$cName"].dependsOn(cp)
+        cp.get().dependsOn(project(":app").tasks["assemble$cName"])
+    }
 }

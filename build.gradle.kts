@@ -36,8 +36,3 @@ allprojects {
 task("clean", type = Delete::class) {
     delete(rootProject.buildDir)
 }
-
-gradle.projectsEvaluated {
-    project(":module").tasks["assembleDebug"].dependsOn(project(":app").tasks["assembleDebug"])
-    project(":module").tasks["assembleRelease"].dependsOn(project(":app").tasks["assembleRelease"])
-}

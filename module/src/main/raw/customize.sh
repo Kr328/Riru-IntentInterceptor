@@ -24,7 +24,6 @@ ui_print "- Extracting module files"
 
 extract "$ZIPFILE" 'module.prop' "$MODPATH"
 extract "$ZIPFILE" 'post-fs-data.sh' "$MODPATH"
-extract "$ZIPFILE" 'service.sh' "$MODPATH"
 extract "$ZIPFILE" 'uninstall.sh' "$MODPATH"
 #extract "$ZIPFILE" 'sepolicy.rule' "$MODPATH"
 
@@ -48,16 +47,10 @@ else
   fi
 fi
 
-# Riru files
-ui_print "- Extracting extra files"
-[ -d "$RIRU_MODULE_PATH" ] || mkdir -p "$RIRU_MODULE_PATH" || abort "! Can't create $RIRU_MODULE_PATH"
-
-extract "$ZIPFILE" "extras.files" "$TMPDIR"
-
-cat "$TMPDIR/extras.files" >&1 | while read file
-do
-  [ -n "$file" ] && extract "$ZIPFILE" "$file" "$MODPATH"
-done
+# dex file & runtime app
+ui_print "- Extracting runtime dex & apk"
+extract "$ZIPFILE" 'system/app/IntentInterceptor/IntentInterceptor.apk' "$MODPATH"
+extract "$ZIPFILE" 'system/framework/boot-intent-interceptor.dex' "$MODPATH"
 
 # set permission just in case
 set_perm "$RIRU_PATH" 0 0 0700
@@ -72,6 +65,3 @@ set_perm "$RIRU_MODULE_PATH/module.prop.new" 0 0 0600
 # set permissions
 ui_print "- Setting permissions"
 set_perm_recursive "$MODPATH" 0 0 0755 0644
-
-ui_print "- Reset installation status"
-rm "$MODPATH/apk_installed"
