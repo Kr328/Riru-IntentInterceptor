@@ -21,3 +21,9 @@
 #-renamesourcefileattribute SourceFile
 
 -dontobfuscate
+
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+    public static void checkNotNull(...);
+    public static void checkNotNullParameter(...);
+    public static void checkNotNullExpressionValue(...);
+}
