@@ -1,3 +1,6 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cert-err34-c"
+
 #include <stdio.h>
 #include <jni.h>
 #include <unistd.h>
@@ -43,17 +46,17 @@ static void nativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
 
 static void appProcessPre(JNIEnv *env, int uid, jstring appDataDir) {
     if (appDataDir) {
-        int user_id = uid / 100000;
+        int user_id = 0;
         char package_name[PATH_MAX] = {0};
 
         const char *app_data_dir = (*env)->GetStringUTFChars(env, appDataDir, NULL);
 
         // /data/user/<user_id>/<package>
-        if (sscanf(app_data_dir, "/data/%*[^/]/%*[^/]/%s", package_name) == 1)
+        if (sscanf(app_data_dir, "/data/%*[^/]/%d/%s", &user_id, package_name) == 2)
             goto found;
 
         // /mnt/expand/<id>/user/<user_id>/<package>
-        if (sscanf(appDataDir, "/mnt/expand/%*[^/]/%*[^/]/%*[^/]/%s", package_name) == 1)
+        if (sscanf(appDataDir, "/mnt/expand/%*[^/]/%*[^/]/%d/%s", &user_id, package_name) == 2)
             goto found;
 
         // /data/data/<package>
@@ -191,3 +194,4 @@ void *init(void *arg) {
         }
     }
 }
+#pragma clang diagnostic pop
