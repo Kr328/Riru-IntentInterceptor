@@ -16,7 +16,11 @@ class HideapiRedefineTransform : Transform() {
         setOf(QualifiedContent.DefaultContentType.CLASSES)
 
     override fun getScopes(): MutableSet<in QualifiedContent.Scope> =
-        mutableSetOf(QualifiedContent.Scope.PROJECT)
+        mutableSetOf(
+            QualifiedContent.Scope.PROJECT,
+            QualifiedContent.Scope.SUB_PROJECTS,
+            QualifiedContent.Scope.EXTERNAL_LIBRARIES,
+        )
 
     override fun transform(transformInvocation: TransformInvocation) {
         println("isIncremental = " + transformInvocation.isIncremental)
