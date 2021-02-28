@@ -25,31 +25,31 @@ class RiruPlugin : Plugin<Project> {
                 it.fromApplicationVariant(v)
             }
 
-            val generate = target.tasks.register("generateMagisk${cName}", GenerateMagiskTask::class.java) {
-                it.fromApplicationVariant(v)
-            }
-
-            val patch = target.tasks.register("patchDex${cName}", PatchDexTask::class.java) {
-                it.fromApplicationVariant(v)
-            }
+            val generate =
+                target.tasks.register("generateMagisk${cName}", GenerateMagiskTask::class.java) {
+                    it.fromApplicationVariant(v)
+                }
 
             val merge = target.tasks.register("mergeMagisk${cName}", MergeMagiskTask::class.java) {
                 it.fromApplicationVariant(v)
             }
 
-            val checksum = target.tasks.register("generateChecksum${cName}", GenerateChecksumTask::class.java) {
+            val checksum = target.tasks.register(
+                "generateChecksum${cName}",
+                GenerateChecksumTask::class.java
+            ) {
                 it.fromApplicationVariant(v)
             }
 
-            val packages = target.tasks.register("packageMagisk${cName}", PackageMagiskTask::class.java) {
-                it.fromApplicationVariant(v)
-            }
+            val packages =
+                target.tasks.register("packageMagisk${cName}", PackageMagiskTask::class.java) {
+                    it.fromApplicationVariant(v)
+                }
 
             extract.get().dependsOn(v.packageApplicationProvider.get())
-            patch.get().dependsOn(extract.get())
             merge.get().dependsOn(extract.get())
-            checksum.get().dependsOn(generate.get(), merge.get(), patch.get())
-            packages.get().dependsOn(generate.get(), merge.get(), patch.get(), checksum.get())
+            checksum.get().dependsOn(generate.get(), merge.get())
+            packages.get().dependsOn(generate.get(), merge.get(), checksum.get())
 
             v.assembleProvider.get().dependsOn(packages.get())
         }

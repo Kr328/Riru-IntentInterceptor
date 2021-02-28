@@ -1,7 +1,6 @@
 import com.android.build.gradle.api.ApplicationVariant
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.FileType
 import org.gradle.api.tasks.*
 import org.gradle.work.Incremental
 import org.gradle.work.InputChanges
@@ -28,9 +27,10 @@ abstract class GenerateChecksumTask : DefaultTask() {
             if (EXCLUDES.any { e -> it.normalizedPath.startsWith(e) })
                 return@forEach
 
-            val text = MessageDigest.getInstance("SHA-256").digest(it.file.readBytes()).joinToString("") { b ->
-                String.format("%02x", b.toInt() and 0xFF)
-            }
+            val text = MessageDigest.getInstance("SHA-256").digest(it.file.readBytes())
+                .joinToString("") { b ->
+                    String.format("%02x", b.toInt() and 0xFF)
+                }
 
             output.file(it.normalizedPath + ".sha256sum").get().asFile
                 .apply { parentFile.mkdirs() }

@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.4.30"
+    kotlin("jvm") version "1.4.31"
     `java-gradle-plugin`
 }
 
@@ -16,10 +16,7 @@ dependencies {
         exclude("org.jetbrains.kotlin", "kotlin-stdlib-jdk7")
         exclude("org.jetbrains.kotlin", "kotlin-reflect")
     }
-    implementation("com.google.guava:guava:30.1-jre")
-    implementation("org.smali:dexlib2:2.4.0") {
-        exclude("com.google.guava", "guava")
-    }
+    implementation("javassist:javassist:3.12.1.GA")
 }
 
 gradlePlugin {
@@ -27,6 +24,10 @@ gradlePlugin {
         create("riru") {
             id = "riru"
             implementationClass = "RiruPlugin"
+        }
+        create("hideapi-redefine") {
+            id = "hideapi-redefine"
+            implementationClass = "HideapiRedefinePlugin"
         }
     }
 }

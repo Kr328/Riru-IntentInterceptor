@@ -3,6 +3,7 @@ import java.net.URI
 plugins {
     id("com.android.application")
     kotlin("android")
+    id("hideapi-redefine")
     id("riru")
 }
 
