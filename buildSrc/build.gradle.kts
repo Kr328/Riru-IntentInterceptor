@@ -16,7 +16,7 @@ dependencies {
         exclude("org.jetbrains.kotlin", "kotlin-stdlib-jdk7")
         exclude("org.jetbrains.kotlin", "kotlin-reflect")
     }
-    implementation("javassist:javassist:3.12.1.GA")
+    implementation("org.javassist:javassist:3.27.0-GA")
 }
 
 gradlePlugin {
