@@ -50,9 +50,9 @@ class HideapiRedefineTransform : Transform() {
             while (true) {
                 val entry = inputStream.nextEntry ?: break
 
-                outputStream.putNextEntry(ZipEntry(entry))
-
                 if (entry.name.endsWith(".class")) {
+                    outputStream.putNextEntry(ZipEntry(replaceName(entry.name)))
+
                     val bufferedIn = BufferedInputStream(inputStream)
                     val bufferedOut = BufferedOutputStream(outputStream)
 
@@ -60,6 +60,8 @@ class HideapiRedefineTransform : Transform() {
 
                     bufferedOut.flush()
                 } else {
+                    outputStream.putNextEntry(ZipEntry(entry.name))
+
                     inputStream.copyTo(outputStream)
                 }
 
@@ -76,12 +78,30 @@ class HideapiRedefineTransform : Transform() {
                 directory,
                 transformInvocation.isIncremental
             )) {
+                if (inputFile.extension != "class") {
+                    val outputFile = transformInvocation.outputProvider.getContentLocation(
+                        directory.name,
+                        directory.contentTypes,
+                        directory.scopes,
+                        Format.DIRECTORY
+                    ).resolve(relativePath)
+
+                    if (!inputFile.exists()) {
+                        outputFile.delete()
+
+                        continue
+                    }
+
+                    outputFile.parentFile?.mkdirs()
+
+                    inputFile.copyTo(outputFile)
+
+                    continue
+                }
+
                 val outputFile = transformInvocation.outputProvider.getContentLocation(
-                    directory.name,
-                    directory.contentTypes,
-                    directory.scopes,
-                    Format.DIRECTORY
-                ).resolve(relativePath)
+                    directory.name, directory.contentTypes, directory.scopes, Format.DIRECTORY
+                ).resolve(replaceName(relativePath))
 
                 if (!inputFile.exists()) {
                     outputFile.delete()
@@ -91,20 +111,11 @@ class HideapiRedefineTransform : Transform() {
 
                 outputFile.parentFile?.mkdirs()
 
-                val inputStream = FileInputStream(inputFile)
-                val outputStream = FileOutputStream(outputFile)
-
-                if (inputFile.name.endsWith(".class")) {
-                    val bufferedIn = BufferedInputStream(inputStream)
-                    val bufferedOut = BufferedOutputStream(outputStream)
-                    patchClass(bufferedIn, bufferedOut)
-                    bufferedOut.flush()
-                } else {
-                    inputStream.copyTo(outputStream)
+                BufferedInputStream(FileInputStream(inputFile)).use { i ->
+                    BufferedOutputStream(FileOutputStream(outputFile)).use { o ->
+                        patchClass(i, o)
+                    }
                 }
-
-                inputStream.close()
-                outputStream.close()
             }
         }
     }
