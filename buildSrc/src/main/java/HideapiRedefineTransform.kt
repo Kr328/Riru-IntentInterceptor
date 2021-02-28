@@ -3,7 +3,6 @@ import javassist.bytecode.ClassFile
 import java.io.*
 import java.util.jar.JarInputStream
 import java.util.jar.JarOutputStream
-import java.util.stream.Collectors
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -110,10 +109,9 @@ class HideapiRedefineTransform : Transform() {
         return if (!transform.isIncremental) {
             transform.inputs.flatMap { t -> t.jarInputs }
         } else {
-            transform.inputs.stream()
-                .flatMap { s: TransformInput -> s.jarInputs.stream() }
-                .filter { s: JarInput -> s.status != Status.NOTCHANGED }
-                .collect(Collectors.toList())
+            transform.inputs
+                .flatMap { s -> s.jarInputs }
+                .filter { s -> s.status != Status.NOTCHANGED }
         }
     }
 
