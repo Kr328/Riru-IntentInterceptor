@@ -1,9 +1,10 @@
 package com.github.kr328.intent.compat
 
+import android.content.pm.`PackageManager$OnPermissionsChangedListener`
 import com.github.kr328.intent.util.unsafeCast
 
 class PermissionListener(private val onChanged: (Int) -> Unit) {
-    private val receiver = `$android`.content.pm.PackageManager.OnPermissionsChangedListener {
+    private val receiver = `PackageManager$OnPermissionsChangedListener` {
         onChanged(it)
     }
 
