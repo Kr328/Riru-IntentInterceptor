@@ -1,4 +1,5 @@
 import com.android.build.gradle.api.ApplicationVariant
+import org.apache.tools.ant.filters.FixCrLfFilter
 import org.gradle.api.tasks.Copy
 
 abstract class GenerateMagiskTask : Copy() {
@@ -11,7 +12,7 @@ abstract class GenerateMagiskTask : Copy() {
             REGEX_PLACEHOLDER.replace(it) { result ->
                 when (result.groupValues[1]) {
                     "MAGISK_ID" -> extension.id
-                    "MAIGKS_NAME" -> extension.name
+                    "MAGISK_NAME" -> extension.name
                     "MAGISK_VERSION_NAME" -> variant.versionName!!
                     "MAGISK_VERSION_CODE" -> variant.versionCode.toString()
                     "MAGISK_AUTHOR" -> extension.author
@@ -31,6 +32,8 @@ abstract class GenerateMagiskTask : Copy() {
                 }
             }
         }
+
+        filter(mapOf("eol" to FixCrLfFilter.CrLf.newInstance("lf")), FixCrLfFilter::class.java)
 
         into(project.generatedMagiskDir(variant))
     }

@@ -1,5 +1,3 @@
-import java.net.URI
-
 plugins {
     id("com.android.application")
     kotlin("android")
@@ -18,8 +16,8 @@ riru {
     description = "A module of Riru. Allow modules modify activity intents."
     author = "Kr328"
     dexName = "boot-intent-interceptor.dex"
-    minApi = 9
-    minApiName = "22.0"
+    minApi = 25
+    minApiName = "25.0.0"
 }
 
 android {
@@ -92,13 +90,9 @@ dependencies {
     implementation(project(":shared"))
 
     implementation(kotlin("stdlib"))
-    implementation("androidx.annotation:annotation:1.1.0")
+    implementation("androidx.annotation:annotation:1.2.0")
 
-    implementation("rikka.ndk:riru:10")
-}
-
-repositories {
-    maven { url = URI("https://dl.bintray.com/rikkaw/Libraries") }
+    implementation("dev.rikka.ndk:riru:25.0.0")
 }
 
 afterEvaluate {

@@ -1,5 +1,5 @@
 id=%%%MAGISK_ID%%%
-name=%%%MAIGKS_NAME%%%
+name=%%%MAGISK_NAME%%%
 version=%%%MAGISK_VERSION_NAME%%%
 versionCode=%%%MAGISK_VERSION_CODE%%%
 author=%%%MAGISK_AUTHOR%%%

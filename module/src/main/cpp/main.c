@@ -19,21 +19,17 @@
 #include "dex.h"
 #include "config.h"
 
-#define TARGET_RIRU_API 10
+#define TARGET_RIRU_API 25
 
 #define EXPORT __attribute__((visibility("default"))) __attribute__((used))
 #define UNUSED(var) ((void) var)
 
 static int inject_next_app = 0;
 
+static const char *riru_magisk_module_path = NULL;
+
 static void onModuleLoaded() {
-    read_dex_data();
-}
-
-static int shouldSkipUid(int uid) {
-    UNUSED(uid);
-
-    return 0;
+    read_dex_data(riru_magisk_module_path);
 }
 
 static void nativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
@@ -113,85 +109,29 @@ static void nativeSpecializeAppProcessPost(
     appProcessPost(env);
 }
 
-EXPORT
-void *init(void *arg) {
-    static void *_module = NULL;
-    static int riru_api_version = -1;
-    static int phase = 0;
-
-    phase++;
-
-    switch (phase) {
-        case 1: {
-            int core_max_api_version = *(int *) arg;
-            riru_api_version = core_max_api_version <= TARGET_RIRU_API ? core_max_api_version
-                                                                       : TARGET_RIRU_API;
-            return &riru_api_version;
+RiruVersionedModuleInfo module = {
+        .moduleApiVersion = TARGET_RIRU_API,
+        .moduleInfo = {
+                .supportHide = true,
+                .version = RIRU_MODULE_VERSION_CODE,
+                .versionName = RIRU_MODULE_VERSION_NAME,
+                .onModuleLoaded = onModuleLoaded,
+                .forkAndSpecializePre = nativeForkAndSpecializePre,
+                .forkAndSpecializePost = nativeForkAndSpecializePost,
+                .forkSystemServerPre = NULL,
+                .forkSystemServerPost = nativeForkSystemServerPost,
+                .specializeAppProcessPre = nativeSpecializeAppProcessPre,
+                .specializeAppProcessPost = nativeSpecializeAppProcessPost
         }
-        case 2: {
-            switch (riru_api_version) {
-                case 9: {
-                    RiruModuleInfoV9 *module = malloc(sizeof(RiruModuleInfoV9));
-                    memset(module, 0, sizeof(*module));
+};
 
-                    module->supportHide = 1;
+EXPORT RiruVersionedModuleInfo *init(Riru *riru) {
+    int core_max_api_version = riru->riruApiVersion;
+    int riru_api_version = core_max_api_version <= TARGET_RIRU_API ? core_max_api_version : TARGET_RIRU_API;
+    module.moduleApiVersion = riru_api_version;
 
-                    module->versionName = RIRU_MODULE_VERSION_NAME;
-                    module->version = RIRU_MODULE_VERSION_CODE;
+    riru_magisk_module_path = strdup(riru->magiskModulePath);
 
-                    module->onModuleLoaded = &onModuleLoaded;
-                    module->shouldSkipUid = &shouldSkipUid;
-                    module->forkSystemServerPost = &nativeForkSystemServerPost;
-                    module->forkAndSpecializePre = &nativeForkAndSpecializePre;
-                    module->forkAndSpecializePost = &nativeForkAndSpecializePost;
-                    module->specializeAppProcessPre = &nativeSpecializeAppProcessPre;
-                    module->specializeAppProcessPost = &nativeSpecializeAppProcessPost;
-
-                    _module = module;
-
-                    return module;
-                }
-                case 10: {
-                    RiruModuleInfoV10 *module = malloc(sizeof(RiruModuleInfoV10));
-                    memset(module, 0, sizeof(*module));
-
-                    module->supportHide = 1;
-
-                    module->versionName = RIRU_MODULE_VERSION_NAME;
-                    module->version = RIRU_MODULE_VERSION_CODE;
-
-                    module->onModuleLoaded = &onModuleLoaded;
-                    module->shouldSkipUid = &shouldSkipUid;
-                    module->forkSystemServerPost = &nativeForkSystemServerPost;
-                    module->forkAndSpecializePre = &nativeForkAndSpecializePre;
-                    module->forkAndSpecializePost = &nativeForkAndSpecializePost;
-                    module->specializeAppProcessPre = &nativeSpecializeAppProcessPre;
-                    module->specializeAppProcessPost = &nativeSpecializeAppProcessPost;
-
-                    _module = module;
-
-                    return module;
-                }
-                case -1: {
-                    LOGE("invalid riru api version");
-
-                    break;
-                }
-                default: {
-                    break;
-                }
-            }
-
-            return NULL;
-        }
-        case 3: {
-            free(_module);
-
-            return NULL;
-        }
-        default: {
-            return NULL;
-        }
-    }
+    return &module;
 }
 #pragma clang diagnostic pop

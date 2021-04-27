@@ -28,7 +28,7 @@ static int get_platform_api_version() {
     return version;
 }
 
-void read_dex_data() {
+void read_dex_data(const char *riru_magisk_module_path) {
     if (dex_data != NULL)
         return;
 
@@ -36,7 +36,15 @@ void read_dex_data() {
     if (get_platform_api_version() < 26)
         return;
 
-    scope_fd int fd = open(DEX_PATH, O_RDONLY);
+    char path[PATH_MAX] = {'\0'};
+    if (riru_magisk_module_path == NULL) {
+        LOGE("riru_magisk_module_path is null");
+        return;
+    }
+    strcat(path, riru_magisk_module_path);
+    strcat(path, DEX_PATH);
+
+    scope_fd int fd = open(path, O_RDONLY);
     assert_syscall(fd < 0, "open dex file");
 
     struct stat s;
@@ -95,7 +103,7 @@ static jobject load_dex_by_file(JNIEnv *env, jobject oSystemClassLoader) {
 
     jobject oClassLoader = (*env)->NewObject(env, cDexClassLoader,
                                              mDexClassLoaderInit,
-                                             (*env)->NewStringUTF(env, DEX_PATH),
+                                             (*env)->NewStringUTF(env, DEX_IN_SYSTEM_PATH),
                                              (*env)->NewStringUTF(env, OPTIMIZED_DIRECTORY),
                                              NULL,
                                              oSystemClassLoader
@@ -124,6 +132,8 @@ void load_and_invoke_dex(JNIEnv *env, const char *args) {
     jobject oDexClassLoader = load_dex_in_memory(env, oSystemClassLoader);
 
     if (oDexClassLoader == NULL) {
+        LOGI("zygote: load dex in memory failure");
+
         oDexClassLoader = load_dex_by_file(env, oSystemClassLoader);
     }
 

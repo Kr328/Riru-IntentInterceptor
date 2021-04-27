@@ -27,30 +27,38 @@ extract "$ZIPFILE" 'post-fs-data.sh' "$MODPATH"
 extract "$ZIPFILE" 'uninstall.sh' "$MODPATH"
 #extract "$ZIPFILE" 'sepolicy.rule' "$MODPATH"
 
+mkdir "$MODPATH/riru"
+mkdir "$MODPATH/riru/lib"
+mkdir "$MODPATH/riru/lib64"
+
 if [ "$ARCH" = "x86" ] || [ "$ARCH" = "x64" ]; then
   ui_print "- Extracting x86 libraries"
-  extract "$ZIPFILE" "system_x86/lib/libriru_$RIRU_MODULE_ID.so" "$MODPATH"
-  mv "$MODPATH/system_x86/lib" "$MODPATH/system/lib"
+  extract "$ZIPFILE" "riru_x86/lib/libriru_$RIRU_MODULE_ID.so" "$MODPATH"
+  mv "$MODPATH/riru_x86/lib" "$MODPATH/riru/lib"
 
   if [ "$IS64BIT" = true ]; then
     ui_print "- Extracting x64 libraries"
-    extract "$ZIPFILE" "system_x86/lib64/libriru_$RIRU_MODULE_ID.so" "$MODPATH"
-    mv "$MODPATH/system_x86/lib64" "$MODPATH/system/lib64"
+    extract "$ZIPFILE" "riru_x86/lib64/libriru_$RIRU_MODULE_ID.so" "$MODPATH"
+    mv "$MODPATH/riru_x86/lib64" "$MODPATH/riru/lib64"
   fi
 else
   ui_print "- Extracting arm libraries"
-  extract "$ZIPFILE" "system/lib/libriru_$RIRU_MODULE_ID.so" "$MODPATH"
+  extract "$ZIPFILE" "riru/lib/libriru_$RIRU_MODULE_ID.so" "$MODPATH"
 
   if [ "$IS64BIT" = true ]; then
     ui_print "- Extracting arm64 libraries"
-    extract "$ZIPFILE" "system/lib64/libriru_$RIRU_MODULE_ID.so" "$MODPATH"
+    extract "$ZIPFILE" "riru/lib64/libriru_$RIRU_MODULE_ID.so" "$MODPATH"
   fi
 fi
 
 # dex file & runtime app
 ui_print "- Extracting runtime dex & apk"
 extract "$ZIPFILE" 'system/app/IntentInterceptor/IntentInterceptor.apk' "$MODPATH"
-extract "$ZIPFILE" 'system/framework/boot-intent-interceptor.dex' "$MODPATH"
+extract "$ZIPFILE" 'framework/boot-intent-interceptor.dex' "$MODPATH"
+if [ "$API" -lt 26 ]; then
+  ui_print "- API lower than 26, copy dex file to system/"
+  cp -R "$MODPATH/framework" "$MODPATH/system"
+fi
 
 # set permission just in case
 set_perm "$RIRU_PATH" 0 0 0700
