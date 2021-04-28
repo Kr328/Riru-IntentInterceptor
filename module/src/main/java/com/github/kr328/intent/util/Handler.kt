@@ -16,6 +16,8 @@ fun startHandlerThread(name: String): HandlerThread {
             TLog.e("Inject thread crashed: ${e.message}", e)
         }
 
+        isDaemon = true
+
         start()
     }
 }
