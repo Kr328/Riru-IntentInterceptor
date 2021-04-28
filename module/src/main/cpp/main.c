@@ -19,11 +19,12 @@
 #include "dex.h"
 #include "config.h"
 
-#define TARGET_RIRU_API 10
+#define RIRU_TARGET_API 25
 
 #define EXPORT __attribute__((visibility("default"))) __attribute__((used))
 #define UNUSED(var) ((void) var)
 
+static Riru *riru_api;
 static int inject_next_app = 0;
 
 static void onModuleLoaded() {
@@ -44,7 +45,7 @@ static void nativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
     }
 }
 
-static void appProcessPre(JNIEnv *env, int uid, jstring appDataDir) {
+static void appProcessPre(JNIEnv *env, jstring appDataDir) {
     if (appDataDir) {
         int user_id = 0;
         char package_name[PATH_MAX] = {0};
@@ -74,6 +75,8 @@ static void appProcessPre(JNIEnv *env, int uid, jstring appDataDir) {
     } else {
         inject_next_app = 0;
     }
+
+    *riru_api->allowUnload = !inject_next_app;
 }
 
 static void appProcessPost(JNIEnv *env) {
@@ -88,9 +91,11 @@ static void nativeForkAndSpecializePre(
         JNIEnv *env, jclass cls, jint *uid, jint *gid, jintArray *gids, jint *runtimeFlags,
         jobjectArray *rlimits, jint *mountExternal, jstring *seInfo, jstring *niceName,
         jintArray *fdsToClose, jintArray *fdsToIgnore, jboolean *is_child_zygote,
-        jstring *instructionSet, jstring *appDataDir, jboolean *isTopApp, jobjectArray *pkgDataInfoList,
-        jobjectArray *whitelistedDataInfoList, jboolean *bindMountAppDataDirs, jboolean *bindMountAppStorageDirs) {
-    appProcessPre(env, *uid, *appDataDir);
+        jstring *instructionSet, jstring *appDataDir, jboolean *isTopApp,
+        jobjectArray *pkgDataInfoList,
+        jobjectArray *whitelistedDataInfoList, jboolean *bindMountAppDataDirs,
+        jboolean *bindMountAppStorageDirs) {
+    appProcessPre(env, *appDataDir);
 }
 
 static void nativeSpecializeAppProcessPre(
@@ -99,7 +104,7 @@ static void nativeSpecializeAppProcessPre(
         jboolean *startChildZygote, jstring *instructionSet, jstring *appDataDir,
         jboolean *isTopApp, jobjectArray *pkgDataInfoList, jobjectArray *whitelistedDataInfoList,
         jboolean *bindMountAppDataDirs, jboolean *bindMountAppStorageDirs) {
-    appProcessPre(env, *uid, *appDataDir);
+    appProcessPre(env, *appDataDir);
 }
 
 static void nativeForkAndSpecializePost(JNIEnv *env, jclass clazz, jint res) {
@@ -113,85 +118,34 @@ static void nativeSpecializeAppProcessPost(
     appProcessPost(env);
 }
 
+RiruVersionedModuleInfo module = {
+        .moduleApiVersion = RIRU_TARGET_API,
+        .moduleInfo = {
+                .supportHide = true,
+                .version = RIRU_MODULE_VERSION_CODE,
+                .versionName = RIRU_MODULE_VERSION_NAME,
+                .onModuleLoaded = onModuleLoaded,
+                .shouldSkipUid = shouldSkipUid,
+                .forkAndSpecializePre = nativeForkAndSpecializePre,
+                .forkAndSpecializePost = nativeForkAndSpecializePost,
+                .forkSystemServerPre = NULL,
+                .forkSystemServerPost = nativeForkSystemServerPost,
+                .specializeAppProcessPre = nativeSpecializeAppProcessPre,
+                .specializeAppProcessPost = nativeSpecializeAppProcessPost,
+        }
+};
+
 EXPORT
-void *init(void *arg) {
-    static void *_module = NULL;
-    static int riru_api_version = -1;
-    static int phase = 0;
+RiruVersionedModuleInfo *init(Riru *riru) {
+    if (riru->riruApiVersion < RIRU_TARGET_API) return NULL;
 
-    phase++;
+    riru_api = riru;
 
-    switch (phase) {
-        case 1: {
-            int core_max_api_version = *(int *) arg;
-            riru_api_version = core_max_api_version <= TARGET_RIRU_API ? core_max_api_version
-                                                                       : TARGET_RIRU_API;
-            return &riru_api_version;
-        }
-        case 2: {
-            switch (riru_api_version) {
-                case 9: {
-                    RiruModuleInfoV9 *module = malloc(sizeof(RiruModuleInfoV9));
-                    memset(module, 0, sizeof(*module));
+    *riru->allowUnload = true;
 
-                    module->supportHide = 1;
+    attach_magisk_path(strdup(riru->magiskModulePath));
 
-                    module->versionName = RIRU_MODULE_VERSION_NAME;
-                    module->version = RIRU_MODULE_VERSION_CODE;
-
-                    module->onModuleLoaded = &onModuleLoaded;
-                    module->shouldSkipUid = &shouldSkipUid;
-                    module->forkSystemServerPost = &nativeForkSystemServerPost;
-                    module->forkAndSpecializePre = &nativeForkAndSpecializePre;
-                    module->forkAndSpecializePost = &nativeForkAndSpecializePost;
-                    module->specializeAppProcessPre = &nativeSpecializeAppProcessPre;
-                    module->specializeAppProcessPost = &nativeSpecializeAppProcessPost;
-
-                    _module = module;
-
-                    return module;
-                }
-                case 10: {
-                    RiruModuleInfoV10 *module = malloc(sizeof(RiruModuleInfoV10));
-                    memset(module, 0, sizeof(*module));
-
-                    module->supportHide = 1;
-
-                    module->versionName = RIRU_MODULE_VERSION_NAME;
-                    module->version = RIRU_MODULE_VERSION_CODE;
-
-                    module->onModuleLoaded = &onModuleLoaded;
-                    module->shouldSkipUid = &shouldSkipUid;
-                    module->forkSystemServerPost = &nativeForkSystemServerPost;
-                    module->forkAndSpecializePre = &nativeForkAndSpecializePre;
-                    module->forkAndSpecializePost = &nativeForkAndSpecializePost;
-                    module->specializeAppProcessPre = &nativeSpecializeAppProcessPre;
-                    module->specializeAppProcessPost = &nativeSpecializeAppProcessPost;
-
-                    _module = module;
-
-                    return module;
-                }
-                case -1: {
-                    LOGE("invalid riru api version");
-
-                    break;
-                }
-                default: {
-                    break;
-                }
-            }
-
-            return NULL;
-        }
-        case 3: {
-            free(_module);
-
-            return NULL;
-        }
-        default: {
-            return NULL;
-        }
-    }
+    return &module;
 }
+
 #pragma clang diagnostic pop

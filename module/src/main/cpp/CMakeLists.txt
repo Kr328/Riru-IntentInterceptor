@@ -28,7 +28,6 @@ find_package(riru REQUIRED CONFIG)
 
 add_definitions(
         "-DRIRU_NAME=\"${RIRU_NAME}\""
-        "-DRIRU_DEX_NAME=\"${RIRU_DEX_NAME}\""
         "-DRIRU_MODULE_ID=\"${RIRU_MODULE_ID}\""
         "-DRIRU_MODULE_VERSION_NAME=\"${RIRU_MODULE_VERSION_NAME}\""
         "-DRIRU_MODULE_VERSION_CODE=${RIRU_MODULE_VERSION_CODE}"

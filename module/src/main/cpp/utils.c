@@ -13,7 +13,7 @@ int read_full(int fd, void *buf, unsigned int length) {
 
     while (_read < length) {
         int r = read(fd, buf + _read, length - _read);
-        if ( r < 0 )
+        if (r < 0)
             return r;
         _read += r;
     }

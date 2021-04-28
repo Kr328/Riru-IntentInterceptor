@@ -9,11 +9,13 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <limits.h>
 #include <sys/system_properties.h>
 
 #define assert_syscall(condition, message) if (condition) do {LOGE("zygote: " message ": %s", strerror(errno)); return;} while (0)
 #define assert_load(message) if (catch_exception(env)) do {LOGE("zygote: load dex: " message " failure"); return;} while (0)
 
+static const char *magisk_path;
 static void *dex_data;
 static size_t dex_size;
 
@@ -28,15 +30,25 @@ static int get_platform_api_version() {
     return version;
 }
 
+void attach_magisk_path(const char *path) {
+    magisk_path = path;
+}
+
 void read_dex_data() {
     if (dex_data != NULL)
+        return;
+
+    if (magisk_path == NULL)
         return;
 
     // InMemoryClassLoader unavailable in android 6.0-7.0
     if (get_platform_api_version() < 26)
         return;
 
-    scope_fd int fd = open(DEX_PATH, O_RDONLY);
+    char path[PATH_MAX];
+    sprintf(path, "%s/%s", magisk_path, DEX_PATH);
+
+    scope_fd int fd = open(path, O_RDONLY);
     assert_syscall(fd < 0, "open dex file");
 
     struct stat s;
@@ -89,13 +101,16 @@ static jobject load_dex_in_memory(JNIEnv *env, jobject oSystemClassLoader) {
 }
 
 static jobject load_dex_by_file(JNIEnv *env, jobject oSystemClassLoader) {
+    char path[PATH_MAX];
+    sprintf(path, "%s/%s", magisk_path, DEX_PATH);
+
     jclass cDexClassLoader = (*env)->FindClass(env, "dalvik/system/DexClassLoader");
     jmethodID mDexClassLoaderInit = (*env)->GetMethodID(env, cDexClassLoader, "<init>",
                                                         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;)V");
 
     jobject oClassLoader = (*env)->NewObject(env, cDexClassLoader,
                                              mDexClassLoaderInit,
-                                             (*env)->NewStringUTF(env, DEX_PATH),
+                                             (*env)->NewStringUTF(env, path),
                                              (*env)->NewStringUTF(env, OPTIMIZED_DIRECTORY),
                                              NULL,
                                              oSystemClassLoader
@@ -115,8 +130,10 @@ void load_and_invoke_dex(JNIEnv *env, const char *args) {
     // get system class loader
     jclass cClassLoader = (*env)->FindClass(env, "java/lang/ClassLoader");
     jmethodID mGetSystemClassLoader = (*env)->GetStaticMethodID(env, cClassLoader,
-            "getSystemClassLoader", "()Ljava/lang/ClassLoader;");
-    jobject oSystemClassLoader = (*env)->CallStaticObjectMethod(env, cClassLoader, mGetSystemClassLoader);
+                                                                "getSystemClassLoader",
+                                                                "()Ljava/lang/ClassLoader;");
+    jobject oSystemClassLoader = (*env)->CallStaticObjectMethod(env, cClassLoader,
+                                                                mGetSystemClassLoader);
 
     assert_load("ClassLoader.getSystemClassLoader(...)");
 

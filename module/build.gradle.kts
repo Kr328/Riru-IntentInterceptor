@@ -1,5 +1,3 @@
-import java.net.URI
-
 plugins {
     id("com.android.application")
     kotlin("android")
@@ -17,9 +15,8 @@ riru {
     name = "Riru - Intent Interceptor"
     description = "A module of Riru. Allow modules modify activity intents."
     author = "Kr328"
-    dexName = "boot-intent-interceptor.dex"
-    minApi = 9
-    minApiName = "22.0"
+    minApi = 25
+    minApiName = "25.0"
 }
 
 android {
@@ -43,7 +40,6 @@ android {
                 arguments(
                     "-DRIRU_NAME:STRING=${riru.name}",
                     "-DRIRU_MODULE_ID:STRING=${riru.riruId}",
-                    "-DRIRU_DEX_NAME:STRING=${riru.dexName}",
                     "-DRIRU_MODULE_VERSION_CODE:INTEGER=$versionCode",
                     "-DRIRU_MODULE_VERSION_NAME:STRING=$versionName"
                 )
@@ -92,13 +88,9 @@ dependencies {
     implementation(project(":shared"))
 
     implementation(kotlin("stdlib"))
-    implementation("androidx.annotation:annotation:1.1.0")
+    implementation("androidx.annotation:annotation:1.2.0")
 
-    implementation("rikka.ndk:riru:10")
-}
-
-repositories {
-    maven { url = URI("https://dl.bintray.com/rikkaw/Libraries") }
+    implementation("dev.rikka.ndk:riru:25.0.0")
 }
 
 afterEvaluate {
@@ -110,7 +102,7 @@ afterEvaluate {
                 .resolve("outputs/apk/${it.name}/app-${it.name}.apk"))
 
             into(generatedMagiskDir(it)
-                .resolve("system/app/IntentInterceptor"))
+                .resolve("system/priv-app/IntentInterceptor"))
 
             rename {
                 "IntentInterceptor.apk"
