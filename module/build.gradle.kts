@@ -88,6 +88,7 @@ dependencies {
     implementation(project(":shared"))
 
     implementation(kotlin("stdlib"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.3")
     implementation("androidx.annotation:annotation:1.2.0")
 
     implementation("dev.rikka.ndk:riru:25.0.0")

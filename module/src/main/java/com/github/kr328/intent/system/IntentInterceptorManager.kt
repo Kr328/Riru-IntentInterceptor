@@ -1,31 +1,31 @@
 package com.github.kr328.intent.system
 
 import `$android`.app.ActivityManager
-import android.app.ActivityThread
-import android.os.*
+import android.os.Binder
+import android.os.UserManager
 import com.github.kr328.intent.IIntentInterceptorService
-import com.github.kr328.intent.compat.*
+import com.github.kr328.intent.compat.SystemService
+import com.github.kr328.intent.compat.getUserIds
+import com.github.kr328.intent.compat.requireSystemContext
+import com.github.kr328.intent.compat.userId
 import com.github.kr328.intent.remote.Injection
 import com.github.kr328.intent.shared.TLog
 import com.github.kr328.intent.system.data.DataStore
 import com.github.kr328.intent.system.observer.ApkObserver
 import com.github.kr328.intent.system.observer.PermissionObserver
 import com.github.kr328.intent.system.observer.UserObserver
-import com.github.kr328.intent.util.DaemonHandler
-import com.github.kr328.intent.util.mainLooperHandler
+import com.github.kr328.intent.util.waitActivityThreadAvailable
+import com.github.kr328.intent.util.waitMainThreadAvailable
 import com.github.kr328.intent.util.withPrivilege
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import java.io.File
+import java.io.PrintStream
 
-object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
+object IntentInterceptorManager {
     sealed class Event {
-        object Boot : Event() {
-            override fun toString() = "Boot"
-        }
-
-        object Started : Event() {
-            override fun toString() = "Started"
-        }
-
         data class ApkAdded(val userId: Int, val packageName: String) : Event()
         data class ApkRemoved(val userId: Int, val packageName: String) : Event()
         data class ApkUpdated(val userId: Int, val packageName: String) : Event()
@@ -59,12 +59,6 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
         }
     }
 
-    private fun Event.enqueue(delay: Long = 0) {
-        val msg = Message.obtain(this@IntentInterceptorManager, 0).apply { this.obj = this@enqueue }
-
-        sendMessageDelayed(msg, delay)
-    }
-
     fun shouldSkipUid(uid: Int): Boolean {
         return withPrivilege { SystemService.packages.getPackagesForUid(uid) }?.none {
             users[uid.userId]?.data?.targets?.containsKey(it) == true
@@ -81,114 +75,132 @@ object IntentInterceptorManager : DaemonHandler("intent_interceptor") {
         }
     }
 
-    override fun handleMessage(msg: Message) {
-        when (val event = msg.obj as Event) {
-            Event.Boot -> {
-                if (ActivityThread.currentActivityThread() == null) {
-                    TLog.i("System booting, wait 1s")
+    private suspend fun run() {
+        val events = Channel<Event>(Channel.UNLIMITED)
 
-                    Event.Boot.enqueue(1000)
-                } else {
-                    mainLooperHandler.post {
-                        Event.Started.enqueue()
-                    }
-                }
-            }
-            Event.Started -> {
-                ApkObserver.setAdded { userId, packageName ->
-                    Event.ApkAdded(userId, packageName).enqueue()
-                }
-                ApkObserver.setUpdated { userId, packageName ->
-                    Event.ApkUpdated(userId, packageName).enqueue()
-                }
-                ApkObserver.setRemoved { userId, packageName ->
-                    Event.ApkRemoved(userId, packageName).enqueue()
-                }
-                PermissionObserver.setChanged { userId, uid ->
-                    Event.PermissionChanged(userId, uid).enqueue()
-                }
-                UserObserver.setAdded {
-                    Event.UserAdded(it).enqueue()
-                }
-                UserObserver.setRemoved {
-                    Event.UserRemoved(it).enqueue()
-                }
+        waitActivityThreadAvailable()
+        waitMainThreadAvailable()
 
-                users.forEach { (userId, scope) ->
-                    if (scope.update()) {
-                        killApps(scope.data.targets.keys, userId)
-                    }
-                }
+        ApkObserver.setAdded { userId, packageName ->
+            events.offer(Event.ApkAdded(userId, packageName))
+        }
+        ApkObserver.setUpdated { userId, packageName ->
+            events.offer(Event.ApkUpdated(userId, packageName))
+        }
+        ApkObserver.setRemoved { userId, packageName ->
+            events.offer(Event.ApkRemoved(userId, packageName))
+        }
+        PermissionObserver.setChanged { userId, uid ->
+            events.offer(Event.PermissionChanged(userId, uid))
+        }
+        UserObserver.setAdded {
+            events.offer(Event.UserAdded(it))
+        }
+        UserObserver.setRemoved {
+            events.offer(Event.UserRemoved(it))
+        }
 
-                val users = requireSystemContext()
-                    .getSystemService(UserManager::class.java).getUserIds()
-
-                (this.users.keys - users).forEach {
-                    Event.UserRemoved(it).enqueue()
-                }
-
-                (users - this.users.keys).forEach {
-                    Event.UserAdded(it).enqueue()
-                }
-            }
-            is Event.ApkAdded -> {
-                killApps(
-                    users[event.userId]?.updatePackage(event.packageName) ?: emptyList(),
-                    event.userId
-                )
-            }
-            is Event.ApkRemoved -> {
-                killApps(
-                    users[event.userId]?.removePackage(event.packageName) ?: emptyList(),
-                    event.userId
-                )
-            }
-            is Event.ApkUpdated -> {
-                killApps(
-                    users[event.userId]?.updatePackage(event.packageName) ?: emptyList(),
-                    event.userId
-                )
-            }
-            is Event.PermissionChanged -> {
-                SystemService.packages.getPackagesForUid(event.uid)?.forEach {
-                    killApps(
-                        users[event.userId]?.updatePackage(it) ?: emptyList(),
-                        event.userId,
-                    )
-                }
-            }
-            is Event.UserAdded -> {
-                users[event.userId] = UserScope(event.userId).apply {
-                    if (update()) {
-                        killApps(data.targets.keys, event.userId)
-                    }
-                }
-            }
-            is Event.UserRemoved -> {
-                users.remove(event.userId)?.apply {
-                    File(DataStore.DATA_PATH).resolve(event.userId.toString()).deleteRecursively()
-                }
+        users.forEach { (userId, scope) ->
+            if (scope.update()) {
+                killApps(scope.data.targets.keys, userId)
             }
         }
 
-        TLog.i("Event ${msg.obj} processed")
-    }
+        val users = requireSystemContext()
+            .getSystemService(UserManager::class.java).getUserIds()
 
-    init {
+        (this.users.keys - users).forEach {
+            events.offer(Event.UserRemoved(it))
+        }
+
+        (users - this.users.keys).forEach {
+            events.offer(Event.UserAdded(it))
+        }
+
         try {
-            File(DataStore.DATA_PATH).listFiles()?.forEach {
-                val userId = it.name.toIntOrNull()
+            while (true) {
+                val event = events.receive()
 
-                if (userId != null) {
-                    users[userId] = UserScope(userId).apply(UserScope::load)
+                when (event) {
+                    is Event.ApkAdded -> {
+                        killApps(
+                            IntentInterceptorManager.users[event.userId]?.updatePackage(event.packageName)
+                                ?: emptyList(),
+                            event.userId
+                        )
+                    }
+                    is Event.ApkRemoved -> {
+                        killApps(
+                            IntentInterceptorManager.users[event.userId]?.removePackage(event.packageName)
+                                ?: emptyList(),
+                            event.userId
+                        )
+                    }
+                    is Event.ApkUpdated -> {
+                        killApps(
+                            IntentInterceptorManager.users[event.userId]?.updatePackage(event.packageName)
+                                ?: emptyList(),
+                            event.userId
+                        )
+                    }
+                    is Event.PermissionChanged -> {
+                        SystemService.packages.getPackagesForUid(event.uid)?.forEach {
+                            killApps(
+                                IntentInterceptorManager.users[event.userId]?.updatePackage(it)
+                                    ?: emptyList(),
+                                event.userId,
+                            )
+                        }
+                    }
+                    is Event.UserAdded -> {
+                        IntentInterceptorManager.users[event.userId] = UserScope(event.userId).apply {
+                            if (update()) {
+                                killApps(data.targets.keys, event.userId)
+                            }
+                        }
+                    }
+                    is Event.UserRemoved -> {
+                        IntentInterceptorManager.users.remove(event.userId)?.apply {
+                            File(DataStore.DATA_PATH).resolve(event.userId.toString())
+                                .deleteRecursively()
+                        }
+                    }
                 }
+
+                TLog.i("Event $event processed")
             }
-        } catch (e: Exception) {
-            TLog.w("Load configurations from cache: ${e.message}", e)
+        } finally {
+            events.close()
         }
     }
 
     init {
-        Event.Boot.enqueue()
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                File(DataStore.DATA_PATH).listFiles()?.forEach {
+                    val userId = it.name.toIntOrNull()
+
+                    if (userId != null) {
+                        users[userId] = UserScope(userId).apply(UserScope::load)
+                    }
+                }
+            } catch (e: Exception) {
+                TLog.w("Load configurations from cache: ${e.message}", e)
+            }
+
+            try {
+                run()
+            } catch (e: Throwable) {
+                TLog.e("IntentInterceptorService crashed: $e", e)
+
+                try {
+                    DataStore.openCrashedLog().use {
+                        e.printStackTrace(PrintStream(it))
+                    }
+                } catch (e: Exception) {
+                    TLog.w("Save crashed log: $e", e)
+                }
+            }
+        }
     }
 }

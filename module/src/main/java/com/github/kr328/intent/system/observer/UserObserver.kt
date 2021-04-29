@@ -14,17 +14,21 @@ object UserObserver : BroadcastReceiver() {
     private var registered: Boolean = false
 
     override fun onReceive(context: Context?, intent: Intent?) {
-        when (intent?.action) {
-            ACTION_USER_ADDED -> {
-                val userId = intent.getUserIdExtra()
+        try {
+            when (intent?.action) {
+                ACTION_USER_ADDED -> {
+                    val userId = intent.getUserIdExtra()
 
-                onAdded?.invoke(userId ?: return)
-            }
-            ACTION_USER_REMOVED -> {
-                val userId = intent.getUserIdExtra()
+                    onAdded?.invoke(userId ?: return)
+                }
+                ACTION_USER_REMOVED -> {
+                    val userId = intent.getUserIdExtra()
 
-                onRemoved?.invoke(userId ?: return)
+                    onRemoved?.invoke(userId ?: return)
+                }
             }
+        } catch (e: Exception) {
+            TLog.w("Send user changed: $e", e)
         }
     }
 

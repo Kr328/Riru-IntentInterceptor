@@ -17,25 +17,29 @@ object ApkObserver : BroadcastReceiver() {
     private var registered: Boolean = false
 
     override fun onReceive(context: Context?, intent: Intent?) {
-        when (intent?.action) {
-            Intent.ACTION_PACKAGE_ADDED -> {
-                onAdded?.invoke(
-                    intent.getUserIdExtra() ?: return,
-                    intent.data!!.schemeSpecificPart!!
-                )
+        try {
+            when (intent?.action) {
+                Intent.ACTION_PACKAGE_ADDED -> {
+                    onAdded?.invoke(
+                        intent.getUserIdExtra() ?: return,
+                        intent.data!!.schemeSpecificPart!!
+                    )
+                }
+                Intent.ACTION_PACKAGE_REMOVED -> {
+                    onRemoved?.invoke(
+                        intent.getUserIdExtra() ?: return,
+                        intent.data!!.schemeSpecificPart!!
+                    )
+                }
+                Intent.ACTION_PACKAGE_REPLACED -> {
+                    onUpdated?.invoke(
+                        intent.getUserIdExtra() ?: return,
+                        intent.data!!.schemeSpecificPart!!
+                    )
+                }
             }
-            Intent.ACTION_PACKAGE_REMOVED -> {
-                onRemoved?.invoke(
-                    intent.getUserIdExtra() ?: return,
-                    intent.data!!.schemeSpecificPart!!
-                )
-            }
-            Intent.ACTION_PACKAGE_REPLACED -> {
-                onUpdated?.invoke(
-                    intent.getUserIdExtra() ?: return,
-                    intent.data!!.schemeSpecificPart!!
-                )
-            }
+        } catch (e: Exception) {
+            TLog.w("Send apk changed: $e", e)
         }
     }
 

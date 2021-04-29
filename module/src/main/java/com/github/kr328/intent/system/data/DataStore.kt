@@ -9,6 +9,8 @@ import com.github.kr328.intent.system.model.Module
 import com.github.kr328.intent.system.model.Target
 import com.github.kr328.intent.util.*
 import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 
 class DataStore(private val userId: Int) {
     private val modulesFile = File(DATA_PATH).resolve(userId.toString()).resolve(MODULES_DIR)
@@ -122,9 +124,14 @@ class DataStore(private val userId: Int) {
     companion object {
         const val DATA_PATH = "/data/misc/intent"
 
+        private const val CRASHED_FILE = "crashed.log"
         private const val MODULES_DIR = "modules"
         private const val TARGETS_DIR = "targets"
         private const val PACKAGE_FLAGS =
             PackageManager.GET_PERMISSIONS or PackageManager.GET_META_DATA
+
+        fun openCrashedLog(): OutputStream {
+            return FileOutputStream(File(DATA_PATH, CRASHED_FILE))
+        }
     }
 }
