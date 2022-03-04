@@ -7,7 +7,7 @@ import com.github.kr328.intent.shared.TLog
 
 class Interceptors(private val application: Application) {
     private val interceptors: List<LoadedInterceptor> =
-        SystemService.intercept.open(application.packageName).mapNotNull {
+        SystemService.intercept.load().mapNotNull {
             TLog.i("Loading ${it.packageName}")
 
             try {

@@ -2,13 +2,8 @@ package com.github.kr328.intent.util
 
 import android.os.Handler
 import android.os.HandlerThread
-import android.os.Looper
 import android.os.Message
 import com.github.kr328.intent.shared.TLog
-
-val mainLooperHandler: Handler by lazy {
-    Handler(Looper.getMainLooper())
-}
 
 fun startHandlerThread(name: String): HandlerThread {
     return HandlerThread(name).apply {

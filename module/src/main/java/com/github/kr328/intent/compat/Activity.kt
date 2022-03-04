@@ -2,11 +2,9 @@
 
 package com.github.kr328.intent.compat
 
-import android.app.ActivityManagerNative
 import android.app.IActivityManager
 import android.app.IActivityTaskManager
 import android.content.Intent
-import android.os.Build
 import android.os.IBinder
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
@@ -39,19 +37,11 @@ class ActivityHijack<T>(
 }
 
 inline fun IBinder.createActivityHijack(crossinline interceptor: (Intent) -> Intent): IActivityManager {
-    return if (Build.VERSION.SDK_INT >= 26) {
-        ActivityHijack(
-            IActivityManager::class.java,
-            IActivityManager.Stub.asInterface(this),
-            { interceptor(it) }
-        ).hijacked
-    } else {
-        ActivityHijack(
-            IActivityManager::class.java,
-            ActivityManagerNative.asInterface(this),
-            { interceptor(it) }
-        ).hijacked
-    }
+    return ActivityHijack(
+        IActivityManager::class.java,
+        IActivityManager.Stub.asInterface(this),
+        { interceptor(it) }
+    ).hijacked
 }
 
 inline fun IBinder.createActivityTaskHijack(crossinline interceptor: (Intent) -> Intent): IActivityTaskManager {

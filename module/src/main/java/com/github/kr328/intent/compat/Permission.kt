@@ -1,20 +1,17 @@
 package com.github.kr328.intent.compat
 
-import android.content.pm.`PackageManager$OnPermissionsChangedListener`
+import android.content.pm.PackageManager
+import android.content.pm.PackageManagerHidden
 import com.github.kr328.intent.util.unsafeCast
 
-class PermissionListener(private val onChanged: (Int) -> Unit) {
-    private val receiver = `PackageManager$OnPermissionsChangedListener` {
-        onChanged(it)
-    }
+fun interface OnPermissionsChangedListener : PackageManagerHidden.OnPermissionsChangedListener {
+    override fun onPermissionsChanged(uid: Int)
+}
 
-    fun register() {
-        requireSystemContext().packageManager.unsafeCast<`$android`.content.pm.PackageManager>()
-            .addOnPermissionsChangeListener(receiver)
-    }
+fun PackageManager.addOnPermissionsChangeListener(listener: OnPermissionsChangedListener) {
+    unsafeCast<PackageManagerHidden>().addOnPermissionsChangeListener(listener)
+}
 
-    fun unregister() {
-        requireSystemContext().packageManager.unsafeCast<`$android`.content.pm.PackageManager>()
-            .removeOnPermissionsChangeListener(receiver)
-    }
+fun PackageManager.removeOnPermissionsChangeListener(listener: OnPermissionsChangedListener) {
+    unsafeCast<PackageManagerHidden>().removeOnPermissionsChangeListener(listener)
 }

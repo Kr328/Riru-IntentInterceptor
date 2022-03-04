@@ -1,19 +1,23 @@
 package com.github.kr328.intent.compat
 
-import android.content.Intent
+import android.content.IntentHidden
+import android.os.Bundle
 
-fun Intent.getUserIdExtra(): Int? {
-    val userId = getIntExtra(`$android`.content.Intent.EXTRA_USER_HANDLE, -1)
-
-    if (userId < 0) {
-        return null
+var Bundle.userId: Int?
+    get() = getInt(IntentHidden.EXTRA_USER_HANDLE, -1).takeUnless { it < 0 }
+    set(value) {
+        if (value != null) {
+            putInt(IntentHidden.EXTRA_USER_HANDLE, value)
+        } else {
+            remove(IntentHidden.EXTRA_USER_HANDLE)
+        }
     }
 
-    return userId
-}
-
 val ACTION_USER_ADDED: String
-    get() = `$android`.content.Intent.ACTION_USER_ADDED
+    get() = IntentHidden.ACTION_USER_ADDED
 
 val ACTION_USER_REMOVED: String
-    get() = `$android`.content.Intent.ACTION_USER_REMOVED
+    get() = IntentHidden.ACTION_USER_REMOVED
+
+val EXTRA_USER_HANDLE: String
+    get() = IntentHidden.EXTRA_USER_HANDLE
