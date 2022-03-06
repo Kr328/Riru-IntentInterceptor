@@ -6,19 +6,19 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-enum class CollectEachMode {
-    Replace, Difference
+enum class CollectLaunchMode {
+    All, Changed
 }
 
-suspend fun <T> Flow<Set<T>>.collectEach(
-    mode: CollectEachMode = CollectEachMode.Difference,
+suspend fun <T> Flow<Set<T>>.collectWithLaunch(
+    mode: CollectLaunchMode = CollectLaunchMode.Changed,
     block: suspend (T) -> Unit
 ) = coroutineScope {
     var jobs = mapOf<T, Job>()
 
     collectLatest { snapshot ->
         when (mode) {
-            CollectEachMode.Replace -> {
+            CollectLaunchMode.All -> {
                 jobs.values.forEach {
                     it.cancel()
                 }
@@ -27,7 +27,7 @@ suspend fun <T> Flow<Set<T>>.collectEach(
                     launch { block(it) }
                 }
             }
-            CollectEachMode.Difference -> {
+            CollectLaunchMode.Changed -> {
                 (jobs.keys - snapshot).forEach {
                     jobs[it]?.cancel()
                 }
@@ -45,3 +45,14 @@ suspend fun <T> Flow<Set<T>>.collectEach(
         it.cancel()
     }
 }
+
+suspend fun <T> Collection<Flow<T>>.collectAllWithLaunch(block: suspend (T) -> Unit) =
+    coroutineScope {
+        forEach {
+            launch {
+                it.collect {
+                    block(it)
+                }
+            }
+        }
+    }

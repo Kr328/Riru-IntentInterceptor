@@ -4,5 +4,5 @@ import android.content.ContentProviderHidden
 import android.net.Uri
 
 fun Uri.withUserId(userId: Int): Uri {
-    return ContentProviderHidden.createContentUriForUser(this, userId.userHandle)
+    return ContentProviderHidden.maybeAddUserId(this, userId)
 }

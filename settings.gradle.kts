@@ -12,7 +12,7 @@ include(":module")
 dependencyResolutionManagement {
     versionCatalogs {
         create("deps") {
-            val agp = "7.1.1"
+            val agp = "7.1.2"
             val zloader = "2.3"
             val kotlin = "1.6.10"
             val ksp = "$kotlin-1.0.2"

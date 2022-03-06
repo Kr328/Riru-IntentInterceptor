@@ -3,6 +3,7 @@ package com.github.kr328.intent.util
 import android.os.Handler
 import android.os.Looper
 import com.github.kr328.intent.compat.currentActivityThread
+import com.github.kr328.intent.compat.currentSystemContext
 import com.github.kr328.intent.shared.debug
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -10,7 +11,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 
 suspend fun waitActivityThreadAvailable() {
-    while (currentActivityThread() == null) {
+    while (currentActivityThread == null) {
         delay(TimeUnit.SECONDS.toMillis(1))
 
         "ActivityThread unavailable, wait 1s".debug()
@@ -33,4 +34,14 @@ suspend fun waitMainThreadAvailable() {
     }
 
     "MainThread available".debug()
+}
+
+suspend fun waitSystemContextAvailable() {
+    while (currentSystemContext == null) {
+        delay(TimeUnit.SECONDS.toMillis(1))
+
+        "SystemContext unavailable, wait 1s".debug()
+    }
+
+    "SystemContext available".debug()
 }

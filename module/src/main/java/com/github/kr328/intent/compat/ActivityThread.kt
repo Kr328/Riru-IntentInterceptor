@@ -4,15 +4,14 @@ import android.app.ActivityThread
 import android.app.Application
 import android.content.Context
 
-fun currentApplication(): Application? {
-    return ActivityThread.currentApplication()
-}
+val currentApplication: Application?
+    get() = ActivityThread.currentApplication()
 
-fun currentActivityThread(): ActivityThread? {
-    return ActivityThread.currentActivityThread()
-}
+val currentActivityThread: ActivityThread?
+    get() = ActivityThread.currentActivityThread()
 
-fun requireSystemContext(): Context {
-    return ActivityThread.currentActivityThread()?.systemContext!!
-}
+val currentSystemContext: Context?
+    get() = currentActivityThread?.systemContext
 
+val requiredSystemContext: Context
+    get() = currentSystemContext!!

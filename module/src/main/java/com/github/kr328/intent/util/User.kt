@@ -1,18 +1,18 @@
-package com.github.kr328.intent.system
+package com.github.kr328.intent.util
 
+import android.content.Context
 import android.os.UserManager
 import com.github.kr328.intent.compat.*
-import com.github.kr328.intent.util.receiveBroadcasts
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-fun System.listenUsers(): Flow<Set<Int>> {
+fun Context.listenUsers(): Flow<Set<Int>> {
     return flow {
-        var users: Set<Int> = context.getSystemService(UserManager::class.java).userIds.toSet()
+        var users: Set<Int> = getSystemService(UserManager::class.java).userIds.toSet()
 
         emit(users)
 
-        context.receiveBroadcasts(UserHandleALL) {
+        listenBroadcasts(UserHandleALL) {
             addAction(ACTION_USER_ADDED)
             addAction(ACTION_USER_REMOVED)
         }.collect {

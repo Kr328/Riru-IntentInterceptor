@@ -13,7 +13,7 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
-fun Context.receiveBroadcasts(
+fun Context.listenBroadcasts(
     user: UserHandle,
     broadcastPermission: String? = null,
     filterBuilder: IntentFilter.() -> Unit,
@@ -29,14 +29,14 @@ fun Context.receiveBroadcasts(
         val filter = IntentFilter().apply(filterBuilder)
         val handler = Handler(moduleLooper)
 
-        "registerReceiverAsUser(@${receiver.hashCode()}, $user, ${
+        "registerReceiverAsUser(@{${receiver.hashCode()}}, $user, ${
             filter.actionsIterator().asSequence().toList()
         }, $broadcastPermission, $handler)".debug()
 
         registerReceiverAsUser(receiver, user, filter, broadcastPermission, handler)
 
         awaitClose {
-            "unregisterReceiver(@${receiver.hashCode()})".debug()
+            "unregisterReceiver(@{${receiver.hashCode()}})".debug()
 
             unregisterReceiver(receiver)
         }

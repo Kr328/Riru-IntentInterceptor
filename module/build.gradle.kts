@@ -12,6 +12,7 @@ android {
     sourceSets {
         all {
             kotlin.srcDir(buildDir.resolve("generated/ksp/$name/kotlin"))
+            assets.srcDir(buildDir.resolve("intermediates/app_apk/$name"))
         }
     }
 }
@@ -26,6 +27,7 @@ dependencies {
     implementation(deps.kotlin.coroutine)
     implementation(deps.magic.library)
 }
+
 zygote {
     val moduleId = "intent-interceptor"
     val moduleName = "Intent Interceptor"
@@ -52,5 +54,31 @@ zygote {
         author = moduleAuthor
         description = moduleDescription
         entrypoint = moduleEntrypoint
+    }
+}
+
+androidComponents {
+    beforeVariants {
+        afterEvaluate {
+            val packing = project(":app").tasks["package${it.buildType!!.capitalize()}"]
+
+            val sync = tasks.register("syncAppApk${it.name.capitalize()}", Sync::class) {
+                dependsOn(packing)
+
+                destinationDir = buildDir.resolve("intermediates/app_apk/${it.name}")
+
+                from(packing.outputs) {
+                    into("system/app/IntentInterceptor")
+                    include("*.apk")
+                    rename { "IntentInterceptor.apk" }
+                }
+            }
+
+            tasks["merge${it.name.capitalize()}Assets"].dependsOn(sync)
+
+            if (!it.debuggable) {
+                tasks["lintVitalAnalyze${it.name.capitalize()}"].dependsOn(sync)
+            }
+        }
     }
 }

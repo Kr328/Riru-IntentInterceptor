@@ -19,5 +19,3 @@ val ACTION_USER_ADDED: String
 val ACTION_USER_REMOVED: String
     get() = IntentHidden.ACTION_USER_REMOVED
 
-val EXTRA_USER_HANDLE: String
-    get() = IntentHidden.EXTRA_USER_HANDLE

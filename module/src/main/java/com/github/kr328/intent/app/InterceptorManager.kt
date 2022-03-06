@@ -21,7 +21,7 @@ object InterceptorManager : DaemonHandler("interceptors") {
     override fun handleMessage(msg: Message) {
         when (Event.values()[msg.what]) {
             Event.Start -> {
-                if (currentApplication() == null) {
+                if (currentApplication == null) {
                     TLog.i("Application unavailable, wait 1s")
 
                     sendUniqueEvent(Event.Start, 1000)
@@ -30,7 +30,7 @@ object InterceptorManager : DaemonHandler("interceptors") {
                 }
             }
             Event.Load -> {
-                interceptors = Interceptors(currentApplication()!!)
+                interceptors = Interceptors(currentApplication!!)
             }
         }
     }

@@ -16,5 +16,4 @@ public abstract class PackageManagerHidden {
     public abstract void removeOnPermissionsChangeListener(OnPermissionsChangedListener listener);
     public abstract List<ResolveInfo> queryIntentContentProvidersAsUser(Intent intent, int flags, int userId);
     public abstract int getPackageUidAsUser(String packageName, int userId) throws PackageManager.NameNotFoundException;
-    public abstract PackageInfo getPackageInfoAsUser(String packageName, int flags, int userId) throws PackageManager.NameNotFoundException;
 }
