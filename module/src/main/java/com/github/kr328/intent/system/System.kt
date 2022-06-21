@@ -20,20 +20,20 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlin.concurrent.thread
 
-object System {
-    fun main() {
-        thread {
-            try {
-                runBlocking {
-                    run()
-                }
-            } catch (throwable: Throwable) {
-                "SystemProcess.run: $throwable".error(throwable)
+fun launchSystem() {
+    thread {
+        try {
+            runBlocking {
+                run()
             }
+        } catch (throwable: Throwable) {
+            "launchSystem: $throwable".error(throwable)
         }
     }
+}
 
-    private suspend fun run(): Unit = coroutineScope {
+private suspend fun run() {
+    coroutineScope {
         waitActivityThreadAvailable()
         waitMainThreadAvailable()
         waitSystemContextAvailable()
@@ -42,16 +42,20 @@ object System {
 
         requiredSystemContext.handleUsers()
     }
+}
 
-    private suspend fun Context.handleUsers(): Unit = coroutineScope {
+private suspend fun Context.handleUsers() {
+    coroutineScope {
         listenUsers().collectWithLaunch {
             "handleUser($it)".debug()
 
             handleUser(it)
         }
     }
+}
 
-    private suspend fun Context.handleUser(userId: Int): Unit = coroutineScope {
+private suspend fun Context.handleUser(userId: Int) {
+    coroutineScope {
         listenPackagesHasIntentContentProvider(
             Intent(Plugins.ACTION_CONFIGURATION),
             userId
@@ -61,66 +65,70 @@ object System {
             handlePackage(it, userId)
         }
     }
+}
 
-    private suspend fun Context.handlePackage(packageName: String, userId: Int): Unit =
-        coroutineScope {
-            whileHasPermission(packageName, userId) {
-                whileNotBroken(packageName, userId) {
-                    listenIntentContentProviderAuthorities(
-                        Intent(Plugins.ACTION_CONFIGURATION).setPackage(packageName),
-                        userId
-                    ).collectWithLaunch(CollectLaunchMode.All) {
-                        "handleAuthority($userId, $it)".debug()
+private suspend fun Context.handlePackage(packageName: String, userId: Int) {
+    coroutineScope {
+        whileHasPermission(packageName, userId) {
+            whileNotBroken(packageName, userId) {
+                listenIntentContentProviderAuthorities(
+                    Intent(Plugins.ACTION_CONFIGURATION).setPackage(packageName),
+                    userId
+                ).collectWithLaunch(CollectLaunchMode.All) {
+                    "handleAuthority($userId, $it)".debug()
 
-                        handleAuthority(userId, it)
-                    }
+                    handleAuthority(userId, it)
                 }
             }
         }
+    }
+}
 
-    private suspend fun Context.handleAuthority(userId: Int, authority: String): Unit =
-        coroutineScope {
-            val uri = Uri.parse("content://$authority")
+private suspend fun Context.handleAuthority(userId: Int, authority: String) {
+    coroutineScope {
+        val uri = Uri.parse("content://$authority")
 
-            val targets = contentResolver.listenContentProviderWithQuery(
-                uri.buildUpon().appendPath(Plugins.PROVIDER_PATH_TARGETS).build()
-                    .withUserId(userId),
-                arrayOf(Plugins.PROVIDER_COLUMN_PACKAGE_NAME),
-            ) {
-                sequence<String> {
-                    val packageName = getColumnIndex(Plugins.PROVIDER_COLUMN_PACKAGE_NAME)
+        val targets = contentResolver.listenContentProviderWithQuery(
+            uri.buildUpon().appendPath(Plugins.PROVIDER_PATH_TARGETS).build().withUserId(userId),
+            arrayOf(Plugins.PROVIDER_COLUMN_PACKAGE_NAME),
+        ) {
+            sequence<String> {
+                val packageName = getColumnIndex(Plugins.PROVIDER_COLUMN_PACKAGE_NAME)
 
-                    while (moveToNext()) {
-                        yield(getString(packageName))
-                    }
-                }.toSet()
-            }
-            val configs = contentResolver.listenContentProviderWithQuery(
-                uri.buildUpon().appendPath(Plugins.PROVIDER_PATH_CONFIGS).build()
-                    .withUserId(userId),
-                arrayOf(Plugins.PROVIDER_COLUMN_KEY, Plugins.PROVIDER_COLUMN_VALUE),
-            ) {
-                sequence<Pair<String, String>> {
-                    val key = getColumnIndex(Plugins.PROVIDER_COLUMN_KEY)
-                    val value = getColumnIndex(Plugins.PROVIDER_COLUMN_VALUE)
+                while (moveToNext()) {
+                    yield(getString(packageName))
+                }
+            }.toSet()
+        }
+        val configs = contentResolver.listenContentProviderWithQuery(
+            uri.buildUpon().appendPath(Plugins.PROVIDER_PATH_CONFIGS).build().withUserId(userId),
+            arrayOf(Plugins.PROVIDER_COLUMN_KEY, Plugins.PROVIDER_COLUMN_VALUE),
+        ) {
+            sequence<Pair<String, String>> {
+                val key = getColumnIndex(Plugins.PROVIDER_COLUMN_KEY)
+                val value = getColumnIndex(Plugins.PROVIDER_COLUMN_VALUE)
 
-                    while (moveToNext()) {
-                        yield(getString(key) to getString(value))
-                    }
-                }.toMap()
-            }
+                while (moveToNext()) {
+                    yield(getString(key) to getString(value))
+                }
+            }.toMap()
+        }
+        InjectionManager.withToken { token ->
             combine(targets, configs) { target, config ->
                 target to config
             }.collectLatest { (target, config) ->
                 "targets = $target, configs = $config".debug()
             }
         }
+    }
+}
 
-    private suspend fun Context.whileHasPermission(
-        packageName: String,
-        userId: Int,
-        block: suspend () -> Unit,
-    ) = coroutineScope {
+private suspend fun Context.whileHasPermission(
+    packageName: String,
+    userId: Int,
+    block: suspend () -> Unit,
+) {
+    coroutineScope {
         listenPermissionGranted(
             Plugins.PERMISSION_INTERCEPT_INTENT,
             packageName,
@@ -131,12 +139,14 @@ object System {
             }
         }
     }
+}
 
-    private suspend fun Context.whileNotBroken(
-        packageName: String,
-        userId: Int,
-        block: suspend () -> Unit
-    ) = coroutineScope {
+private suspend fun Context.whileNotBroken(
+    packageName: String,
+    userId: Int,
+    block: suspend () -> Unit
+) {
+    coroutineScope {
         flow {
             emit(Unit)
 
